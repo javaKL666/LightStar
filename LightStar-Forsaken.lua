@@ -60,11 +60,11 @@ local Tabs = {
     Esp = Window:AddTab('ESP','scan-eye','让你能够透视他们!!!'),
     NotificationListen = Window:AddTab('通知提示','mails','让你帮助你监听杀手!!!'),
     FightingKilling = Window:AddTab('战斗&杀戮','swords','让变得打击更轻松!!!'),
+    Block = Window:AddTab('格挡','target','让你自动抵御杀手的攻击!!!'),
     BanEffect = Window:AddTab('反效果','cpu','让你无法受到效果!!!'),
     AnimationAction = Window:AddTab('动作','file','让你在别人面前动作炫酷!!!'),
     PhysicalStrength = Window:AddTab('体力','zap','让你奔跑体力最大!!!'),
     Generator = Window:AddTab('发动机','printer','让你修发动机更快!!!'),
-    Pizza = Window:AddTab('披萨','pizza','让你快速吃到披萨!!!'),
     Settings = Window:AddTab("设置","settings",'设置&调试'),
 }
 
@@ -742,484 +742,6 @@ KillerSurvival:AddToggle("AntiHiddenStats", {
         end
     end
 })
-
-local ZZ = Tabs.Main:AddLeftGroupbox('自动格挡[Guest 1337]')
-
-local Guest1337AutoBlockConfigV1 = {
-    Enabled = false,
-    BaseDistance = 16,
-    ScanInterval = 0.0005,
-    BlockCooldown = 0.06,
-    MoveCompBase = 1.8,
-    MoveCompFactor = 0.3,
-    SpeedThreshold = 6,
-    PredictBase = 5,
-    PredictMax = 15,
-    PredictFactor = 0.45,
-    TargetAngle = 50,
-    MinAttackSpeed = 10,
-    ShowVisualization = false,
-    EnablePrediction = false,
-    PingCompensation = 0.15,
-    FastKillerAdjust = 1.5,
-    ReactionBoost = 1.2,
-    TargetSoundIds = {
-        "102228729296384", "140242176732868", "112809109188560", "136323728355613",
-        "115026634746636", "84116622032112", "108907358619313", "127793641088496",
-        "86174610237192", "95079963655241", "101199185291628", "119942598489800",
-        "84307400688050", "113037804008732", "105200830849301", "75330693422988",
-        "82221759983649", "81702359653578", "108610718831698", "112395455254818",
-        "109431876587852", "109348678063422", "85853080745515", "12222216"
-    },
-    TargetAnimIds = {
-        "126830014841198", "126355327951215", "121086746534252", "18885909645",
-        "98456918873918", "105458270463374", "83829782357897", "125403313786645",
-        "118298475669935", "82113744478546", "70371667919898", "99135633258223",
-        "97167027849946", "109230267448394", "139835501033932", "126896426760253",
-        "109667959938617", "126681776859538", "129976080405072", "121293883585738",
-        "81639435858902", "137314737492715", "92173139187970"
-    }
-}
-
-pcall(function()
-    local Players = game:GetService("Players")
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local RunService = game:GetService("RunService")
-    local Stats = game:GetService("Stats")
-    
-    local soundLookup = {}
-    for _, id in ipairs(Guest1337AutoBlockConfigV1.TargetSoundIds) do
-        soundLookup[id] = true
-        soundLookup["rbxassetid://" .. id] = true
-    end
-    
-    local animLookup = {}
-    for _, id in ipairs(Guest1337AutoBlockConfigV1.TargetAnimIds) do
-        animLookup[id] = true
-        animLookup["rbxassetid://" .. id] = true
-    end
-    
-    local LocalPlayer = Players.LocalPlayer
-    local lastBlockTime = 0
-    local combatConnection = nil
-    local lastScanTime = 0
-    local visualizationParts = {}
-    local soundCache = {}
-    local animCache = {}
-    local lastSoundCheck = 0
-    local lastAnimCheck = 0
-    local lastPingCheck = 0
-    local currentPing = 0
-    local threatCache = {}
-    local lastThreatUpdate = 0
-    
-    local function GetPing()
-        local currentTime = os.clock()
-        if currentTime - lastPingCheck < 0.3 then
-            return currentPing
-        end
-        lastPingCheck = currentTime
-        
-        local stats = Stats and Stats.Network and Stats.Network:FindFirstChild("ServerStatsItem")
-        if stats then
-            local pingStat = stats:FindFirstChild("Data Ping")
-            if pingStat then
-                currentPing = pingStat.Value
-                return currentPing
-            end
-        end
-        
-        return 0
-    end
-    
-    local function GetPingCompensation()
-        local ping = GetPing()
-        return math.min(0.4, ping / 1000 * Guest1337AutoBlockConfigV1.PingCompensation * 12)
-    end
-    
-    local function CreateVisualization()
-        if not LocalPlayer.Character then return end
-        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return end
-        
-        for _, part in ipairs(visualizationParts) do
-            part:Destroy()
-        end
-        visualizationParts = {}
-        
-        local center = rootPart.Position
-        local distance = Guest1337AutoBlockConfigV1.BaseDistance
-        local angle = math.rad(Guest1337AutoBlockConfigV1.TargetAngle)
-        local segments = 36
-        
-        -- 创建中心球体表示玩家位置
-        local centerSphere = Instance.new("Part")
-        centerSphere.Size = Vector3.new(1, 1, 1)
-        centerSphere.Position = center + Vector3.new(0, 0.5, 0)
-        centerSphere.Shape = Enum.PartType.Ball
-        centerSphere.BrickColor = BrickColor.new("Bright blue")
-        centerSphere.Material = Enum.Material.Neon
-        centerSphere.Transparency = 0.3
-        centerSphere.Anchored = true
-        centerSphere.CanCollide = false
-        centerSphere.Parent = workspace
-        table.insert(visualizationParts, centerSphere)
-        
-        -- 创建扇形区域表示格挡范围
-        for i = 1, segments do
-            local part = Instance.new("Part")
-            part.Size = Vector3.new(0.3, 0.1, 0.3)
-            part.BrickColor = BrickColor.new("Bright green")
-            part.Material = Enum.Material.Neon
-            part.Transparency = 0.7
-            part.Anchored = true
-            part.CanCollide = false
-            part.Parent = workspace
-            table.insert(visualizationParts, part)
-        end
-        
-        local function UpdateVisualization()
-            if not Guest1337AutoBlockConfigV1.ShowVisualization then return end
-            if not LocalPlayer.Character then return end
-            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-            
-            local center = root.Position + Vector3.new(0, 0.5, 0)
-            local lookVector = root.CFrame.LookVector
-            local distance = Guest1337AutoBlockConfigV1.BaseDistance
-            local angle = math.rad(Guest1337AutoBlockConfigV1.TargetAngle)
-            
-            -- 更新中心球体位置
-            centerSphere.Position = center
-            
-            -- 更新扇形区域
-            for i = 1, #visualizationParts - 1 do
-                local part = visualizationParts[i + 1]
-                local segmentAngle = (i - 1) * (2 * angle) / (#visualizationParts - 2) - angle
-                local rotCFrame = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), segmentAngle)
-                local dir = rotCFrame:VectorToWorldSpace(lookVector)
-                local pos = center + dir * distance
-                part.Position = pos
-                
-                -- 设置扇形区域的朝向
-                local lookAtCenter = CFrame.lookAt(pos, center)
-                part.CFrame = lookAtCenter
-            end
-        end
-        
-        local visConnection
-        visConnection = RunService.Heartbeat:Connect(function()
-            if not Guest1337AutoBlockConfigV1.ShowVisualization then
-                for _, part in ipairs(visualizationParts) do
-                    part:Destroy()
-                end
-                visualizationParts = {}
-                visConnection:Disconnect()
-                return
-            end
-            pcall(UpdateVisualization)
-        end)
-    end
-    
-    local function HasTargetSound(character)
-        if not character then return false end
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return false end
-        
-        local currentTime = os.clock()
-        if currentTime - lastSoundCheck < 0.0003 then
-            return soundCache[character] or false
-        end
-        lastSoundCheck = currentTime
-        
-        local found = false
-        for _, child in ipairs(rootPart:GetChildren()) do
-            if child:IsA("Sound") then
-                local soundId = tostring(child.SoundId)
-                local numericId = string.match(soundId, "(%d+)$")
-                if numericId and soundLookup[numericId] then
-                    found = true
-                    break
-                end
-            end
-        end
-        
-        soundCache[character] = found
-        return found
-    end
-    
-    local function HasTargetAnimation(character)
-        if not character then return false end
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if not humanoid then return false end
-        
-        local currentTime = os.clock()
-        if currentTime - lastAnimCheck < 0.0003 then
-            return animCache[character] or false
-        end
-        lastAnimCheck = currentTime
-        
-        local found = false
-        local animator = humanoid:FindFirstChildOfClass("Animator")
-        if animator then
-            for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-                if track.Animation then
-                    local animId = tostring(track.Animation.AnimationId)
-                    local numericId = string.match(animId, "(%d+)$")
-                    if numericId and animLookup[numericId] then
-                        found = true
-                        break
-                    end
-                end
-            end
-        end
-        
-        animCache[character] = found
-        return found
-    end
-    
-    local function GetMoveCompensation()
-        if not LocalPlayer.Character then return 0 end
-        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return 0 end
-        
-        local velocity = rootPart.Velocity
-        local speed = math.sqrt(velocity.X^2 + velocity.Y^2 + velocity.Z^2)
-        return Guest1337AutoBlockConfigV1.MoveCompBase + (speed * Guest1337AutoBlockConfigV1.MoveCompFactor)
-    end
-    
-    local function IsFastKiller(killer)
-        if not killer then return false end
-        local killerRoot = killer:FindFirstChild("HumanoidRootPart")
-        if not killerRoot then return false end
-        
-        local killerVel = killerRoot.Velocity
-        local killerSpeed = math.sqrt(killerVel.X^2 + killerVel.Y^2 + killerVel.Z^2)
-        return killerSpeed > Guest1337AutoBlockConfigV1.MinAttackSpeed
-    end
-    
-    local function GetTotalDetectionRange(killer)
-        local base = Guest1337AutoBlockConfigV1.BaseDistance
-        local moveBonus = GetMoveCompensation()
-        local predict = 0
-        local pingBonus = GetPingCompensation() * 8
-        local reactionBoost = Guest1337AutoBlockConfigV1.ReactionBoost
-
-        if Guest1337AutoBlockConfigV1.EnablePrediction and killer and killer:FindFirstChild("HumanoidRootPart") then
-            local killerVel = killer.HumanoidRootPart.Velocity
-            local killerSpeed = math.sqrt(killerVel.X^2 + killerVel.Y^2 + killerVel.Z^2)
-            
-            if killerSpeed > Guest1337AutoBlockConfigV1.SpeedThreshold then
-                predict = math.min(
-                    Guest1337AutoBlockConfigV1.PredictMax, 
-                    Guest1337AutoBlockConfigV1.PredictBase + (killerSpeed * Guest1337AutoBlockConfigV1.PredictFactor)
-                )
-            end
-            
-            if IsFastKiller(killer) then
-                predict = predict * Guest1337AutoBlockConfigV1.FastKillerAdjust
-            end
-        end
-        
-        return (base + moveBonus + predict + pingBonus) * reactionBoost
-    end
-    
-    local function IsTargetingMe(killer)
-        local myCharacter = LocalPlayer.Character
-        if not myCharacter then return false end
-        
-        local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
-        local killerRoot = killer and killer:FindFirstChild("HumanoidRootPart")
-        if not myRoot or not killerRoot then return false end
-        
-        local directionToMe = (myRoot.Position - killerRoot.Position).Unit
-        local killerLook = killerRoot.CFrame.LookVector
-        
-        local dot = directionToMe:Dot(killerLook)
-        local angle = math.deg(math.acos(math.clamp(dot, -1, 1)))
-        
-        return angle <= Guest1337AutoBlockConfigV1.TargetAngle
-    end
-    
-    local function IsKillerInRange(killer)
-        local myCharacter = LocalPlayer.Character
-        if not myCharacter then return false end
-        
-        local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
-        local killerRoot = killer and killer:FindFirstChild("HumanoidRootPart")
-        if not myRoot or not killerRoot then return false end
-        
-        -- 计算杀手与玩家的实际距离
-        local distance = (myRoot.Position - killerRoot.Position).Magnitude
-        local detectionRange = GetTotalDetectionRange(killer)
-        
-        -- 只有当杀手在检测范围内时才返回true
-        return distance <= detectionRange
-    end
-    
-    local function UpdateThreatCache()
-        local currentTime = os.clock()
-        if currentTime - lastThreatUpdate < 0.1 then
-            return threatCache
-        end
-        lastThreatUpdate = currentTime
-        
-        threatCache = {}
-        local killersFolder = workspace:FindFirstChild("Killers") or (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers"))
-        if not killersFolder then return threatCache end
-        
-        local myCharacter = LocalPlayer.Character
-        if not myCharacter then return threatCache end
-        
-        local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
-        if not myRoot then return threatCache end
-        
-        for _, killer in ipairs(killersFolder:GetChildren()) do
-            if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") then
-                local killerRoot = killer.HumanoidRootPart
-                
-                -- 首先检查杀手是否在范围内
-                if IsKillerInRange(killer) and IsTargetingMe(killer) then
-                    local hasSound = HasTargetSound(killer)
-                    local hasAnim = HasTargetAnimation(killer)
-                    
-                    if hasSound or hasAnim then
-                        local distance = (myRoot.Position - killerRoot.Position).Magnitude
-                        local detectionRange = GetTotalDetectionRange(killer)
-                        
-                        threatCache[killer] = {
-                            distance = distance,
-                            detectionRange = detectionRange,
-                            timestamp = currentTime,
-                            hasSound = hasSound,
-                            hasAnim = hasAnim
-                        }
-                    end
-                end
-            end
-        end
-        
-        return threatCache
-    end
-    
-    local function GetThreateningKillers()
-        local cache = UpdateThreatCache()
-        local killers = {}
-        local currentTime = os.clock()
-        
-        for killer, data in pairs(cache) do
-            if currentTime - data.timestamp < 0.2 then
-                table.insert(killers, killer)
-            end
-        end
-        
-        return killers
-    end
-    
-    local function GetAdjustedCooldown()
-        local ping = GetPing()
-        return math.max(0.04, Guest1337AutoBlockConfigV1.BlockCooldown - (ping / 1000 * 0.7))
-    end
-    
-    local function PerformBlock()
-        local now = os.clock()
-        if now - lastBlockTime >= GetAdjustedCooldown() then
-            pcall(function()
-                local args = {
-                    "UseActorAbility",
-                    {
-                        buffer.fromstring("\"Block\"")
-                    }
-                }
-                game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
-                lastBlockTime = now
-            end)
-        end
-    end
-    
-    local function CombatLoop()
-        local currentTime = os.clock()
-        if currentTime - lastScanTime >= Guest1337AutoBlockConfigV1.ScanInterval then
-            lastScanTime = currentTime
-            
-            if not LocalPlayer.Character then return end
-            local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if not myRoot then return end
-            
-            local killers = GetThreateningKillers()
-            if #killers > 0 then
-                PerformBlock()
-            end
-        end
-    end
-    
-ZZ:AddToggle("AutoBlockV1", {
-        Text = "自动格挡",
-        Default = false,
-        Callback = function(enabled)
-            Guest1337AutoBlockConfigV1.Enabled = enabled
-            if enabled then
-                if combatConnection then
-                    combatConnection:Disconnect()
-                end
-                combatConnection = RunService.Stepped:Connect(function()
-                    pcall(CombatLoop)
-                end)
-            elseif combatConnection then
-                combatConnection:Disconnect()
-                combatConnection = nil
-            end
-        end
-    })
-    
-ZZ:AddSlider("Guest1337AutoBlockBaseDistanceV1", {
-        Text = "距离",
-        Default = 16,
-        Min = 5,
-        Max = 30,
-        Rounding = 1,
-        Callback = function(value)
-            Guest1337AutoBlockConfigV1.BaseDistance = value
-        end
-})
-    
-ZZ:AddSlider("Guest1337AutoBlockTargetAngleV1", {
-        Text = "角度",
-        Default = 70,
-        Min = 10,
-        Max = 180,
-        Rounding = 1,
-        Callback = function(value)
-            Guest1337AutoBlockConfigV1.TargetAngle = value
-        end
-})
-    
-ZZ:AddToggle("Guest1337AutoBlockVisualizationV1", {
-        Text = "格挡范围可视化",
-        Default = false,
-        Callback = function(enabled)
-            Guest1337AutoBlockConfigV1.ShowVisualization = enabled
-            if enabled then
-                CreateVisualization()
-            else
-                for _, part in ipairs(visualizationParts) do
-                    part:Destroy()
-                end
-                visualizationParts = {}
-            end
-        end
-})
-
-    LocalPlayer.CharacterAdded:Connect(function()
-        if Guest1337AutoBlockConfigV1.Enabled and combatConnection then
-            combatConnection:Disconnect()
-            combatConnection = RunService.Stepped:Connect(CombatLoop)
-        end
-        if Guest1337AutoBlockConfigV1.ShowVisualization then
-            CreateVisualization()
-        end
-    end)
-end)
 
 local SM = Tabs.Main:AddLeftGroupbox('背刺[TweTime]')
 
@@ -6827,9 +6349,1373 @@ Visual:AddToggle("NEK",{
         end
 })
 
+local ZZ = Tabs.Block:AddLeftGroupbox('访客自动格挡V1[音频检测]')
+
+local Guest1337AutoBlockConfigV1 = {
+    Enabled = false,
+    BaseDistance = 16,
+    ScanInterval = 0.0005,
+    BlockCooldown = 0.06,
+    MoveCompBase = 1.8,
+    MoveCompFactor = 0.3,
+    SpeedThreshold = 6,
+    PredictBase = 5,
+    PredictMax = 15,
+    PredictFactor = 0.45,
+    TargetAngle = 50,
+    MinAttackSpeed = 10,
+    ShowVisualization = false,
+    EnablePrediction = false,
+    PingCompensation = 0.15,
+    FastKillerAdjust = 1.5,
+    ReactionBoost = 1.2,
+    TargetSoundIds = {
+        "102228729296384", "140242176732868", "112809109188560", "136323728355613",
+        "115026634746636", "84116622032112", "108907358619313", "127793641088496",
+        "86174610237192", "95079963655241", "101199185291628", "119942598489800",
+        "84307400688050", "113037804008732", "105200830849301", "75330693422988",
+        "82221759983649", "81702359653578", "108610718831698", "112395455254818",
+        "109431876587852", "109348678063422", "85853080745515", "12222216"
+    },
+    TargetAnimIds = {
+        "126830014841198", "126355327951215", "121086746534252", "18885909645",
+        "98456918873918", "105458270463374", "83829782357897", "125403313786645",
+        "118298475669935", "82113744478546", "70371667919898", "99135633258223",
+        "97167027849946", "109230267448394", "139835501033932", "126896426760253",
+        "109667959938617", "126681776859538", "129976080405072", "121293883585738",
+        "81639435858902", "137314737492715", "92173139187970"
+    }
+}
+
+pcall(function()
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local RunService = game:GetService("RunService")
+    local Stats = game:GetService("Stats")
+    
+    local soundLookup = {}
+    for _, id in ipairs(Guest1337AutoBlockConfigV1.TargetSoundIds) do
+        soundLookup[id] = true
+        soundLookup["rbxassetid://" .. id] = true
+    end
+    
+    local animLookup = {}
+    for _, id in ipairs(Guest1337AutoBlockConfigV1.TargetAnimIds) do
+        animLookup[id] = true
+        animLookup["rbxassetid://" .. id] = true
+    end
+    
+    local LocalPlayer = Players.LocalPlayer
+    local lastBlockTime = 0
+    local combatConnection = nil
+    local lastScanTime = 0
+    local visualizationParts = {}
+    local soundCache = {}
+    local animCache = {}
+    local lastSoundCheck = 0
+    local lastAnimCheck = 0
+    local lastPingCheck = 0
+    local currentPing = 0
+    local threatCache = {}
+    local lastThreatUpdate = 0
+    
+    local function GetPing()
+        local currentTime = os.clock()
+        if currentTime - lastPingCheck < 0.3 then
+            return currentPing
+        end
+        lastPingCheck = currentTime
+        
+        local stats = Stats and Stats.Network and Stats.Network:FindFirstChild("ServerStatsItem")
+        if stats then
+            local pingStat = stats:FindFirstChild("Data Ping")
+            if pingStat then
+                currentPing = pingStat.Value
+                return currentPing
+            end
+        end
+        
+        return 0
+    end
+    
+    local function GetPingCompensation()
+        local ping = GetPing()
+        return math.min(0.4, ping / 1000 * Guest1337AutoBlockConfigV1.PingCompensation * 12)
+    end
+    
+    local function CreateVisualization()
+        if not LocalPlayer.Character then return end
+        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+        
+        for _, part in ipairs(visualizationParts) do
+            part:Destroy()
+        end
+        visualizationParts = {}
+        
+        local center = rootPart.Position
+        local distance = Guest1337AutoBlockConfigV1.BaseDistance
+        local angle = math.rad(Guest1337AutoBlockConfigV1.TargetAngle)
+        local segments = 36
+        
+        -- 创建中心球体表示玩家位置
+        local centerSphere = Instance.new("Part")
+        centerSphere.Size = Vector3.new(1, 1, 1)
+        centerSphere.Position = center + Vector3.new(0, 0.5, 0)
+        centerSphere.Shape = Enum.PartType.Ball
+        centerSphere.BrickColor = BrickColor.new("Bright blue")
+        centerSphere.Material = Enum.Material.Neon
+        centerSphere.Transparency = 0.3
+        centerSphere.Anchored = true
+        centerSphere.CanCollide = false
+        centerSphere.Parent = workspace
+        table.insert(visualizationParts, centerSphere)
+        
+        -- 创建扇形区域表示格挡范围
+        for i = 1, segments do
+            local part = Instance.new("Part")
+            part.Size = Vector3.new(0.3, 0.1, 0.3)
+            part.BrickColor = BrickColor.new("Bright green")
+            part.Material = Enum.Material.Neon
+            part.Transparency = 0.7
+            part.Anchored = true
+            part.CanCollide = false
+            part.Parent = workspace
+            table.insert(visualizationParts, part)
+        end
+        
+        local function UpdateVisualization()
+            if not Guest1337AutoBlockConfigV1.ShowVisualization then return end
+            if not LocalPlayer.Character then return end
+            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            local center = root.Position + Vector3.new(0, 0.5, 0)
+            local lookVector = root.CFrame.LookVector
+            local distance = Guest1337AutoBlockConfigV1.BaseDistance
+            local angle = math.rad(Guest1337AutoBlockConfigV1.TargetAngle)
+            
+            -- 更新中心球体位置
+            centerSphere.Position = center
+            
+            -- 更新扇形区域
+            for i = 1, #visualizationParts - 1 do
+                local part = visualizationParts[i + 1]
+                local segmentAngle = (i - 1) * (2 * angle) / (#visualizationParts - 2) - angle
+                local rotCFrame = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), segmentAngle)
+                local dir = rotCFrame:VectorToWorldSpace(lookVector)
+                local pos = center + dir * distance
+                part.Position = pos
+                
+                -- 设置扇形区域的朝向
+                local lookAtCenter = CFrame.lookAt(pos, center)
+                part.CFrame = lookAtCenter
+            end
+        end
+        
+        local visConnection
+        visConnection = RunService.Heartbeat:Connect(function()
+            if not Guest1337AutoBlockConfigV1.ShowVisualization then
+                for _, part in ipairs(visualizationParts) do
+                    part:Destroy()
+                end
+                visualizationParts = {}
+                visConnection:Disconnect()
+                return
+            end
+            pcall(UpdateVisualization)
+        end)
+    end
+    
+    local function HasTargetSound(character)
+        if not character then return false end
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return false end
+        
+        local currentTime = os.clock()
+        if currentTime - lastSoundCheck < 0.0003 then
+            return soundCache[character] or false
+        end
+        lastSoundCheck = currentTime
+        
+        local found = false
+        for _, child in ipairs(rootPart:GetChildren()) do
+            if child:IsA("Sound") then
+                local soundId = tostring(child.SoundId)
+                local numericId = string.match(soundId, "(%d+)$")
+                if numericId and soundLookup[numericId] then
+                    found = true
+                    break
+                end
+            end
+        end
+        
+        soundCache[character] = found
+        return found
+    end
+    
+    local function HasTargetAnimation(character)
+        if not character then return false end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return false end
+        
+        local currentTime = os.clock()
+        if currentTime - lastAnimCheck < 0.0003 then
+            return animCache[character] or false
+        end
+        lastAnimCheck = currentTime
+        
+        local found = false
+        local animator = humanoid:FindFirstChildOfClass("Animator")
+        if animator then
+            for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+                if track.Animation then
+                    local animId = tostring(track.Animation.AnimationId)
+                    local numericId = string.match(animId, "(%d+)$")
+                    if numericId and animLookup[numericId] then
+                        found = true
+                        break
+                    end
+                end
+            end
+        end
+        
+        animCache[character] = found
+        return found
+    end
+    
+    local function GetMoveCompensation()
+        if not LocalPlayer.Character then return 0 end
+        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return 0 end
+        
+        local velocity = rootPart.Velocity
+        local speed = math.sqrt(velocity.X^2 + velocity.Y^2 + velocity.Z^2)
+        return Guest1337AutoBlockConfigV1.MoveCompBase + (speed * Guest1337AutoBlockConfigV1.MoveCompFactor)
+    end
+    
+    local function IsFastKiller(killer)
+        if not killer then return false end
+        local killerRoot = killer:FindFirstChild("HumanoidRootPart")
+        if not killerRoot then return false end
+        
+        local killerVel = killerRoot.Velocity
+        local killerSpeed = math.sqrt(killerVel.X^2 + killerVel.Y^2 + killerVel.Z^2)
+        return killerSpeed > Guest1337AutoBlockConfigV1.MinAttackSpeed
+    end
+    
+    local function GetTotalDetectionRange(killer)
+        local base = Guest1337AutoBlockConfigV1.BaseDistance
+        local moveBonus = GetMoveCompensation()
+        local predict = 0
+        local pingBonus = GetPingCompensation() * 8
+        local reactionBoost = Guest1337AutoBlockConfigV1.ReactionBoost
+
+        if Guest1337AutoBlockConfigV1.EnablePrediction and killer and killer:FindFirstChild("HumanoidRootPart") then
+            local killerVel = killer.HumanoidRootPart.Velocity
+            local killerSpeed = math.sqrt(killerVel.X^2 + killerVel.Y^2 + killerVel.Z^2)
+            
+            if killerSpeed > Guest1337AutoBlockConfigV1.SpeedThreshold then
+                predict = math.min(
+                    Guest1337AutoBlockConfigV1.PredictMax, 
+                    Guest1337AutoBlockConfigV1.PredictBase + (killerSpeed * Guest1337AutoBlockConfigV1.PredictFactor)
+                )
+            end
+            
+            if IsFastKiller(killer) then
+                predict = predict * Guest1337AutoBlockConfigV1.FastKillerAdjust
+            end
+        end
+        
+        return (base + moveBonus + predict + pingBonus) * reactionBoost
+    end
+    
+    local function IsTargetingMe(killer)
+        local myCharacter = LocalPlayer.Character
+        if not myCharacter then return false end
+        
+        local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+        local killerRoot = killer and killer:FindFirstChild("HumanoidRootPart")
+        if not myRoot or not killerRoot then return false end
+        
+        local directionToMe = (myRoot.Position - killerRoot.Position).Unit
+        local killerLook = killerRoot.CFrame.LookVector
+        
+        local dot = directionToMe:Dot(killerLook)
+        local angle = math.deg(math.acos(math.clamp(dot, -1, 1)))
+        
+        return angle <= Guest1337AutoBlockConfigV1.TargetAngle
+    end
+    
+    local function IsKillerInRange(killer)
+        local myCharacter = LocalPlayer.Character
+        if not myCharacter then return false end
+        
+        local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+        local killerRoot = killer and killer:FindFirstChild("HumanoidRootPart")
+        if not myRoot or not killerRoot then return false end
+        
+        -- 计算杀手与玩家的实际距离
+        local distance = (myRoot.Position - killerRoot.Position).Magnitude
+        local detectionRange = GetTotalDetectionRange(killer)
+        
+        -- 只有当杀手在检测范围内时才返回true
+        return distance <= detectionRange
+    end
+    
+    local function UpdateThreatCache()
+        local currentTime = os.clock()
+        if currentTime - lastThreatUpdate < 0.1 then
+            return threatCache
+        end
+        lastThreatUpdate = currentTime
+        
+        threatCache = {}
+        local killersFolder = workspace:FindFirstChild("Killers") or (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers"))
+        if not killersFolder then return threatCache end
+        
+        local myCharacter = LocalPlayer.Character
+        if not myCharacter then return threatCache end
+        
+        local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+        if not myRoot then return threatCache end
+        
+        for _, killer in ipairs(killersFolder:GetChildren()) do
+            if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") then
+                local killerRoot = killer.HumanoidRootPart
+                
+                -- 首先检查杀手是否在范围内
+                if IsKillerInRange(killer) and IsTargetingMe(killer) then
+                    local hasSound = HasTargetSound(killer)
+                    local hasAnim = HasTargetAnimation(killer)
+                    
+                    if hasSound or hasAnim then
+                        local distance = (myRoot.Position - killerRoot.Position).Magnitude
+                        local detectionRange = GetTotalDetectionRange(killer)
+                        
+                        threatCache[killer] = {
+                            distance = distance,
+                            detectionRange = detectionRange,
+                            timestamp = currentTime,
+                            hasSound = hasSound,
+                            hasAnim = hasAnim
+                        }
+                    end
+                end
+            end
+        end
+        
+        return threatCache
+    end
+    
+    local function GetThreateningKillers()
+        local cache = UpdateThreatCache()
+        local killers = {}
+        local currentTime = os.clock()
+        
+        for killer, data in pairs(cache) do
+            if currentTime - data.timestamp < 0.2 then
+                table.insert(killers, killer)
+            end
+        end
+        
+        return killers
+    end
+    
+    local function GetAdjustedCooldown()
+        local ping = GetPing()
+        return math.max(0.04, Guest1337AutoBlockConfigV1.BlockCooldown - (ping / 1000 * 0.7))
+    end
+    
+    local function PerformBlock()
+        local now = os.clock()
+        if now - lastBlockTime >= GetAdjustedCooldown() then
+            pcall(function()
+                local args = {
+                    "UseActorAbility",
+                    {
+                        buffer.fromstring("\"Block\"")
+                    }
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
+                lastBlockTime = now
+            end)
+        end
+    end
+    
+    local function CombatLoop()
+        local currentTime = os.clock()
+        if currentTime - lastScanTime >= Guest1337AutoBlockConfigV1.ScanInterval then
+            lastScanTime = currentTime
+            
+            if not LocalPlayer.Character then return end
+            local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not myRoot then return end
+            
+            local killers = GetThreateningKillers()
+            if #killers > 0 then
+                PerformBlock()
+            end
+        end
+    end
+    
+ZZ:AddToggle("AutoBlockV1", {
+        Text = "自动格挡",
+        Default = false,
+        Callback = function(enabled)
+            Guest1337AutoBlockConfigV1.Enabled = enabled
+            if enabled then
+                if combatConnection then
+                    combatConnection:Disconnect()
+                end
+                combatConnection = RunService.Stepped:Connect(function()
+                    pcall(CombatLoop)
+                end)
+            elseif combatConnection then
+                combatConnection:Disconnect()
+                combatConnection = nil
+            end
+        end
+    })
+    
+ZZ:AddSlider("Guest1337AutoBlockBaseDistanceV1", {
+        Text = "距离",
+        Default = 16,
+        Min = 5,
+        Max = 30,
+        Rounding = 1,
+        Callback = function(value)
+            Guest1337AutoBlockConfigV1.BaseDistance = value
+        end
+})
+    
+ZZ:AddSlider("Guest1337AutoBlockTargetAngleV1", {
+        Text = "角度",
+        Default = 70,
+        Min = 10,
+        Max = 180,
+        Rounding = 1,
+        Callback = function(value)
+            Guest1337AutoBlockConfigV1.TargetAngle = value
+        end
+})
+    
+ZZ:AddToggle("Guest1337AutoBlockVisualizationV1", {
+        Text = "格挡范围可视化",
+        Default = false,
+        Callback = function(enabled)
+            Guest1337AutoBlockConfigV1.ShowVisualization = enabled
+            if enabled then
+                CreateVisualization()
+            else
+                for _, part in ipairs(visualizationParts) do
+                    part:Destroy()
+                end
+                visualizationParts = {}
+            end
+        end
+})
+
+    LocalPlayer.CharacterAdded:Connect(function()
+        if Guest1337AutoBlockConfigV1.Enabled and combatConnection then
+            combatConnection:Disconnect()
+            combatConnection = RunService.Stepped:Connect(CombatLoop)
+        end
+        if Guest1337AutoBlockConfigV1.ShowVisualization then
+            CreateVisualization()
+        end
+    end)
+end)
+
+ZZ:AddToggle("Guest1337AutoPunch", {
+    Text = "自动拳击",
+    Default = false,
+    Callback = function(Value)
+        -- Define variables outside the callback to maintain state
+        if not _G.AutoPunchVars then
+            _G.AutoPunchVars = {
+                ReplicatedStorage = game:GetService("ReplicatedStorage"),
+                remoteEvent = nil,
+                isRunning = false,
+                connection = nil
+            }
+        end
+        
+        local vars = _G.AutoPunchVars
+        
+        -- Function to safely get the RemoteEvent
+        local function getRemoteEvent()
+            local success, result = pcall(function()
+                return vars.ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
+            end)
+            
+            if not success or not result then
+                warn("无法找到 RemoteEvent！请检查路径：ReplicatedStorage.Modules.Network.RemoteEvent")
+                return nil
+            end
+            return result
+        end
+        
+        -- Function to start sending punch events
+        local function startAutoPunch()
+            if vars.isRunning then return end
+            vars.isRunning = true
+            
+            -- Get the RemoteEvent if we don't have it yet
+            if not vars.remoteEvent then
+                vars.remoteEvent = getRemoteEvent()
+                if not vars.remoteEvent then
+                    warn("RemoteEvent 未初始化，无法发送事件。")
+                    vars.isRunning = false
+                    return
+                end
+            end
+            
+            -- Create the loop connection
+            vars.connection = task.spawn(function()
+                while vars.isRunning and Value do  -- Added Value check here
+local args = {
+	"UseActorAbility",
+	{
+		buffer.fromstring("\"Punch\"")
+	}
+}
+                    vars.remoteEvent:FireServer(unpack(args))
+                    task.wait(0.5)  -- Wait 0.5 seconds between punches
+                end
+                vars.isRunning = false
+            end)
+        end
+        
+        -- Function to stop sending punch events
+        local function stopAutoPunch()
+            if not vars.isRunning then return end
+            vars.isRunning = false
+            
+            -- Cancel the loop if it exists
+            if vars.connection then
+                task.cancel(vars.connection)
+                vars.connection = nil
+            end
+        end
+        
+        -- Handle the toggle state
+        if Value then
+            startAutoPunch()
+        else
+            stopAutoPunch()
+        end
+    end
+})
+
+getgenv().RS = game:GetService("ReplicatedStorage")
+getgenv().TS = game:GetService("TweenService")
+getgenv().RSvc = game:GetService("RunService")
+getgenv().Plrs = game:GetService("Players")
+getgenv().LocalP = Plrs.LocalPlayer
+getgenv().LocalGui = LocalP:WaitForChild("PlayerGui")
+getgenv().LocalHum, getgenv().LocalAnim = nil, nil
+
+getgenv().buffer = buffer or require(game:GetService("ReplicatedStorage").Buffer)
+
+getgenv().AutoBlockSounds = {
+    ["102228729296384"] = true,
+    ["140242176732868"] = true,
+    ["112809109188560"] = true,
+    ["136323728355613"] = true,
+    ["115026634746636"] = true,
+    ["84116622032112"] = true,
+    ["108907358619313"] = true,
+    ["127793641088496"] = true,
+    ["86174610237192"] = true,
+    ["95079963655241"] = true,
+    ["101199185291628"] = true,
+    ["119942598489800"] = true,
+    ["84307400688050"] = true,
+    ["113037804008732"] = true,
+    ["105200830849301"] = true,
+    ["75330693422988"] = true,
+    ["82221759983649"] = true,
+    ["81702359653578"] = true,
+    ["108610718831698"] = true,
+    ["112395455254818"] = true,
+    ["136323728355613"] = true,
+    ["81702359653578"] = true,
+    ["86174610237192"] = true,
+    ["95079963655241"] = true,
+    ["101199185291628"] = true,
+    ["109431876587852"] = true,
+    ["115026634746636"] = true,
+    ["119942598489800"] = true,
+    ["109348678063422"] = true,
+    ["85853080745515"] = true
+}
+
+getgenv().AutoBlockAnims = {
+    ["126830014841198"] = true,
+    ["126355327951215"] = true,
+    ["121086746534252"] = true,
+    ["18885909645"] = true,
+    ["98456918873918"] = true,
+    ["105458270463374"] = true,
+    ["83829782357897"] = true,
+    ["125403313786645"] = true,
+    ["118298475669935"] = true,
+    ["82113744478546"] = true,
+    ["70371667919898"] = true,
+    ["99135633258223"] = true,
+    ["97167027849946"] = true,
+    ["109230267448394"] = true,
+    ["139835501033932"] = true,
+    ["126896426760253"] = true,
+    ["109667959938617"] = true,
+    ["126681776859538"] = true,
+    ["129976080405072"] = true,
+    ["121293883585738"] = true,
+    ["81639435858902"] = true,
+    ["137314737492715"] = true,
+    ["92173139187970"] = true
+}
+
+getgenv().LastAimTime = {}   
+getgenv().AimDuration = 0.5      
+getgenv().AimCooldown = 0.6    
+
+getgenv().AutoBlockEnabled = false
+getgenv().LooseFacingCheck = true
+getgenv().SenseRange = 18
+
+getgenv().KnownKillers = {"c00lkidd", "Jason", "JohnDoe", "1x1x1x1", "Noli", "Slasher"}
+getgenv().KillersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
+
+getgenv().SenseRangeSq = SenseRange * SenseRange
+
+getgenv().KillerCircles = {}
+getgenv().CirclesVisible = false
+
+getgenv().AddKillerCircle = function(killer)
+    if not killer:FindFirstChild("HumanoidRootPart") then return end
+    if KillerCircles[killer] then return end
+
+    local circ = Instance.new("CylinderHandleAdornment")
+    circ.Name = "KillerDetectionCircle"
+    circ.Adornee = killer.HumanoidRootPart
+    circ.Color3 = Color3.fromRGB(255, 0, 0)
+    circ.AlwaysOnTop = true
+    circ.ZIndex = 0
+    circ.Transparency = 0.7
+    circ.Radius = SenseRange / 1.5
+    circ.Height = 0.1
+    circ.CFrame = CFrame.Angles(math.rad(90), 0, 0)
+    circ.Parent = killer.HumanoidRootPart
+
+    KillerCircles[killer] = circ
+end
+
+getgenv().RemoveKillerCircle = function(killer)
+    if KillerCircles[killer] then
+        KillerCircles[killer]:Destroy()
+        KillerCircles[killer] = nil
+    end
+end
+
+getgenv().RefreshKillerCircles = function()
+    for _, killer in ipairs(KillersFolder:GetChildren()) do
+        if CirclesVisible then
+            AddKillerCircle(killer)
+        else
+            RemoveKillerCircle(killer)
+        end
+    end
+end
+
+getgenv().FacingCheckEnabled = true
+
+getgenv().FireBlockRemote = function()
+    if not AutoBlockEnabled then return end
+    
+    local args = {
+        "UseActorAbility",
+        {
+            buffer.fromstring("\"Block\"")
+        }
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
+end
+
+getgenv().IsFacingTarget = function(myRoot, targetRoot)
+    if not FacingCheckEnabled then return true end
+    local dir = (myRoot.Position - targetRoot.Position).Unit
+    local dot = targetRoot.CFrame.LookVector:Dot(dir)
+    return LooseFacingCheck and dot > -0.3 or dot > 0
+end
+
+getgenv().GetAnimIdNumeric = function(anim)
+    if not anim or not anim.AnimationId then return nil end
+    local aid = tostring(anim.AnimationId)
+    local num = aid:match("%d+")
+    if num then return num end
+    return nil
+end
+
+getgenv().AnimationHooks = {}
+getgenv().AnimationBlockedUntil = {}
+
+getgenv().AttemptBlockAnimation = function(track)
+    if not AutoBlockEnabled then return end
+    if not track or not track.Animation then return end
+    if not track.IsPlaying then return end
+
+    local id = GetAnimIdNumeric(track.Animation)
+    if not id or not AutoBlockAnims[id] then return end
+
+    local now = tick()
+    if AnimationBlockedUntil[track] and now < AnimationBlockedUntil[track] then return end
+
+    local char = track.Parent and track.Parent.Parent
+    if not char then return end
+
+    local myRoot = LocalP.Character and LocalP.Character:FindFirstChild("HumanoidRootPart")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not myRoot or not hrp then return end
+
+    local dvec = hrp.Position - myRoot.Position
+    local distSq = dvec.X^2 + dvec.Y^2 + dvec.Z^2
+    if distSq > SenseRangeSq then return end
+
+    if FacingCheckEnabled and not IsFacingTarget(myRoot, hrp) then return end
+
+    FireBlockRemote()
+    AnimationBlockedUntil[track] = now + 1.2
+end
+
+getgenv().HookAnimation = function(track)
+    if not track or not track:IsA("AnimationTrack") then return end
+    if AnimationHooks[track] then return end
+
+    local playConn = track:GetPropertyChangedSignal("IsPlaying"):Connect(function()
+        if track.IsPlaying then pcall(AttemptBlockAnimation, track) end
+    end)
+    local destroyConn
+    destroyConn = track.Destroying:Connect(function()
+        if playConn.Connected then playConn:Disconnect() end
+        if destroyConn.Connected then destroyConn:Disconnect() end
+        AnimationHooks[track] = nil
+        AnimationBlockedUntil[track] = nil
+    end)
+
+    AnimationHooks[track] = {playConn, destroyConn}
+    if track.IsPlaying then
+        task.spawn(function() pcall(AttemptBlockAnimation, track) end)
+    end
+end
+
+getgenv().HookAnimator = function(animator)
+    if not animator then return end
+    for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+        pcall(HookAnimation, track)
+    end
+    
+    animator.AnimationPlayed:Connect(function(track)
+        pcall(HookAnimation, track)
+    end)
+end
+
+getgenv().SoundHooks = {}
+getgenv().SoundBlockedUntil = {}
+
+getgenv().GetNearestKillerRoot = function(maxDist)
+    local kFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+    if not kFolder then return nil end
+    local myRoot = LocalP.Character and LocalP.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil end
+
+    local closest, minDist = nil, maxDist or math.huge
+    for _, k in ipairs(kFolder:GetChildren()) do
+        local hrp = k:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local d = (hrp.Position - myRoot.Position).Magnitude
+            if d < minDist then
+                closest, minDist = hrp, d
+            end
+        end
+    end
+    return closest
+end
+
+getgenv().GetSoundIdNumeric = function(snd)
+    if not snd or not snd.SoundId then return nil end
+    local sid = tostring(snd.SoundId)
+    local num = sid:match("%d+")
+    if num then return num end
+    return nil
+end
+
+getgenv().GetSoundPosition = function(snd)
+    if not snd then return nil end
+    if snd.Parent and snd.Parent:IsA("BasePart") then
+        return snd.Parent.Position, snd.Parent
+    end
+    if snd.Parent and snd.Parent:IsA("Attachment") and snd.Parent.Parent and snd.Parent.Parent:IsA("BasePart") then
+        return snd.Parent.Parent.Position, snd.Parent.Parent
+    end
+    local found = snd.Parent and snd.Parent:FindFirstChildWhichIsA("BasePart", true)
+    return found and found.Position, found or nil, nil
+end
+
+getgenv().GetCharFromDescendant = function(inst)
+    if not inst then return nil end
+    local mdl = inst:FindFirstAncestorOfClass("Model")
+    return mdl and mdl:FindFirstChildOfClass("Humanoid") and mdl or nil
+end
+
+getgenv().AttemptBlockSound = function(snd)
+    if not AutoBlockEnabled then return end
+    if not snd or not snd:IsA("Sound") then return end
+    if not snd.IsPlaying then return end
+
+    local id = GetSoundIdNumeric(snd)
+    if not id or not AutoBlockSounds[id] then return end
+
+    local now = tick()
+    if SoundBlockedUntil[snd] and now < SoundBlockedUntil[snd] then return end
+
+    local myRoot = LocalP.Character and LocalP.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+
+    local pos, part = GetSoundPosition(snd)
+    if not pos or not part then return end
+
+    local char = GetCharFromDescendant(part)
+    local plr = char and Plrs:GetPlayerFromCharacter(char)
+    if not plr or plr == LocalP then return end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local dvec = hrp.Position - myRoot.Position
+    local distSq = dvec.X^2 + dvec.Y^2 + dvec.Z^2
+    if distSq > SenseRangeSq then return end
+
+    if FacingCheckEnabled and not IsFacingTarget(myRoot, hrp) then return end
+
+    FireBlockRemote()
+    SoundBlockedUntil[snd] = now + 1.2
+end
+
+getgenv().HookSound = function(snd)
+    if not snd or not snd:IsA("Sound") then return end
+    if SoundHooks[snd] then return end
+
+    local playConn = snd.Played:Connect(function()
+        pcall(AttemptBlockSound, snd)
+    end)
+    local propConn = snd:GetPropertyChangedSignal("IsPlaying"):Connect(function()
+        if snd.IsPlaying then pcall(AttemptBlockSound, snd) end
+    end)
+    local destroyConn
+    destroyConn = snd.Destroying:Connect(function()
+        if playConn.Connected then playConn:Disconnect() end
+        if propConn.Connected then propConn:Disconnect() end
+        if destroyConn.Connected then destroyConn:Disconnect() end
+        SoundHooks[snd] = nil
+        SoundBlockedUntil[snd] = nil
+    end)
+
+    SoundHooks[snd] = {playConn, propConn, destroyConn}
+    if snd.IsPlaying then
+        task.spawn(function() pcall(AttemptBlockSound, snd) end)
+    end
+end
+
+for _, d in ipairs(game:GetDescendants()) do
+    if d:IsA("Sound") then
+        pcall(HookSound, d)
+    end
+    if d:IsA("Animator") then
+        pcall(HookAnimator, d)
+    end
+end
+
+game.DescendantAdded:Connect(function(d)
+    if d:IsA("Sound") then pcall(HookSound, d) end
+    if d:IsA("Animator") then pcall(HookAnimator, d) end
+end)
+
+LocalP.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        local animator = humanoid:FindFirstChildOfClass("Animator")
+        if animator then
+            pcall(HookAnimator, animator)
+        end
+    end
+end)
+
+RSvc.RenderStepped:Connect(function()
+    for killer, circ in pairs(KillerCircles) do
+        if circ and circ.Parent then
+            circ.Radius = SenseRange / 1.5
+        end
+    end
+end)
+
+KillersFolder.ChildAdded:Connect(function(killer)
+    if CirclesVisible then
+        task.spawn(function()
+            local hrp = killer:WaitForChild("HumanoidRootPart", 5)
+            if hrp then
+                AddKillerCircle(killer)
+            end
+        end)
+    end
+end)
+
+KillersFolder.ChildRemoved:Connect(function(killer)
+    RemoveKillerCircle(killer)
+end)
+
+local ZZ = Tabs.Block:AddLeftGroupbox('访客自动格挡V2')
+
+ZZ:AddToggle("Guest1337AutoBlockV2", {
+    Text = "自动格挡",
+    Default = false,
+    Callback = function(state)
+        AutoBlockEnabled = state
+    end
+})
+
+ZZ:AddSlider("Guest1337AutoBlockSenseRangeV2", {
+    Text = "检测范围",
+    Default = 18,
+    Min = 5,
+    Max = 30,
+    Rounding = 1,
+    Callback = function(value)
+        SenseRange = value
+        SenseRangeSq = SenseRange * SenseRange
+    end
+})
+
+ZZ:AddToggle("Guest1337AutoBlockCircleV2", {
+    Text = "显示范围",
+    Default = false,
+    Callback = function(state)
+        CirclesVisible = state
+        RefreshKillerCircles()
+    end
+})
+
+ZZ:AddToggle("Guest1337AutoBlockFacingV2", {
+    Text = "方向检测",
+    Default = true,
+    Callback = function(Value)
+        FacingCheckEnabled = Value
+    end
+})
+
+ZZ:AddDropdown("Guest1337AutoBlockFacingModeV2", {
+    Values = {"宽松", "严格"},
+    Default = "宽松",
+    Multi = false,
+    Callback = function(opt)
+        LooseFacingCheck = opt == "宽松"
+    end
+})
+
+local ZZ = Tabs.Block:AddRightGroupbox('007n7自动分身格挡')
+
+local config_007n7 = {
+    Enabled = false,
+    BaseDistance = 18,
+    ScanInterval = 0.001,
+    BlockCooldown = 0.08,
+    MoveCompBase = 1.5,
+    MoveCompFactor = 0.25,
+    SpeedThreshold = 8,
+    PredictBase = 4,
+    PredictMax = 12,
+    PredictFactor = 0.35,
+    TargetAngle = 50,
+    MinAttackSpeed = 12,
+    ShowVisualization = false,
+    EnablePrediction = false,
+    PingCompensation = 0.1,
+    FastKillerAdjust = 1.3,
+    TargetSoundIds = {
+        "102228729296384", "140242176732868", "112809109188560", "136323728355613",
+        "115026634746636", "84116622032112", "108907358619313", "127793641088496",
+        "86174610237192", "95079963655241", "101199185291628", "119942598489800",
+        "84307400688050", "113037804008732", "105200830849301", "75330693422988",
+        "82221759983649", "81702359653578", "108610718831698", "112395455254818",
+        "109431876587852", "109348678063422", "85853080745515", "12222216"
+    }
+}
+
+pcall(function()
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local RunService = game:GetService("RunService")
+    local Stats = game:GetService("Stats")
+    
+    local soundLookup = {}
+    for _, id in ipairs(config_007n7.TargetSoundIds) do
+        soundLookup[id] = true
+        soundLookup["rbxassetid://" .. id] = true
+    end
+    
+    local LocalPlayer = Players.LocalPlayer
+    local lastBlockTime = 0
+    local combatConnection = nil
+    local lastScanTime = 0
+    local visualizationParts = {}
+    local soundCache = {}
+    local lastSoundCheck = 0
+    local lastPingCheck = 0
+    local currentPing = 0
+    
+    local function SafeCall(func, ...)
+        local success, result = pcall(func, ...)
+        if not success then
+            return nil
+        end
+        return result
+    end
+    
+    local function GetPing()
+        local currentTime = os.clock()
+        if currentTime - lastPingCheck < 0.5 then
+            return currentPing
+        end
+        lastPingCheck = currentTime
+        
+        local stats = SafeCall(function()
+            return Stats and Stats.Network and Stats.Network:FindFirstChild("ServerStatsItem")
+        end)
+        if stats then
+            local pingStat = stats:FindFirstChild("Data Ping")
+            if pingStat then
+                currentPing = pingStat.Value
+                return currentPing
+            end
+        end
+        
+        return 0
+    end
+    
+    local function GetPingCompensation()
+        local ping = GetPing()
+        return math.min(0.3, ping / 1000 * config_007n7.PingCompensation * 10)
+    end
+    
+    local function CreateVisualization()
+        if not LocalPlayer.Character then return end
+        local rootPart = SafeCall(function() return LocalPlayer.Character:FindFirstChild("HumanoidRootPart") end)
+        if not rootPart then return end
+        
+        for _, part in ipairs(visualizationParts) do
+            SafeCall(function() part:Destroy() end)
+        end
+        visualizationParts = {}
+        
+        local center = rootPart.Position
+        local distance = config_007n7.BaseDistance
+        local angle = math.rad(config_007n7.TargetAngle)
+        local segments = 36
+        
+        local basePart = Instance.new("Part")
+        basePart.Size = Vector3.new(0.1, 0.1, 0.1)
+        basePart.Position = center + Vector3.new(0, 0.1, 0)
+        basePart.Anchored = true
+        basePart.CanCollide = false
+        basePart.Transparency = 1
+        basePart.Parent = workspace
+        table.insert(visualizationParts, basePart)
+        
+        for i = 1, segments do
+            local part = Instance.new("Part")
+            part.Size = Vector3.new(0.5, 0.1, 0.5)
+            part.BrickColor = BrickColor.new("Bright green")
+            part.Material = Enum.Material.Neon
+            part.Transparency = 0.7
+            part.Anchored = true
+            part.CanCollide = false
+            part.Parent = workspace
+            table.insert(visualizationParts, part)
+        end
+        
+        local function UpdateVisualization()
+            if not config_007n7.ShowVisualization then return end
+            if not LocalPlayer.Character then return end
+            local root = SafeCall(function() return LocalPlayer.Character:FindFirstChild("HumanoidRootPart") end)
+            if not root then return end
+            
+            local center = root.Position + Vector3.new(0, 0.1, 0)
+            local lookVector = root.CFrame.LookVector
+            local distance = config_007n7.BaseDistance
+            local angle = math.rad(config_007n7.TargetAngle)
+            
+            basePart.Position = center
+            
+            for i = 1, #visualizationParts - 1 do
+                local part = visualizationParts[i + 1]
+                local segmentAngle = (i - 1) * (2 * angle) / (#visualizationParts - 2) - angle
+                local rotCFrame = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), segmentAngle)
+                local dir = rotCFrame:VectorToWorldSpace(lookVector)
+                local pos = center + dir * distance
+                part.Position = pos
+                part.Size = Vector3.new(0.5, 0.1, 0.5)
+            end
+        end
+        
+        local visConnection
+        visConnection = RunService.Heartbeat:Connect(function()
+            if not config_007n7.ShowVisualization then
+                for _, part in ipairs(visualizationParts) do
+                    SafeCall(function() part:Destroy() end)
+                end
+                visualizationParts = {}
+                SafeCall(function() visConnection:Disconnect() end)
+                return
+            end
+            SafeCall(UpdateVisualization)
+        end)
+    end
+    
+    local function HasTargetSound(character)
+        if not character then return false end
+        local rootPart = SafeCall(function() return character:FindFirstChild("HumanoidRootPart") end)
+        if not rootPart then return false end
+        
+        local currentTime = os.clock()
+        if currentTime - lastSoundCheck < 0.0005 then
+            return soundCache[character] or false
+        end
+        lastSoundCheck = currentTime
+        
+        local found = false
+        for _, child in ipairs(rootPart:GetChildren()) do
+            if child:IsA("Sound") and child.IsPlaying then
+                local soundId = SafeCall(function() return tostring(child.SoundId) end)
+                if soundId then
+                    local numericId = string.match(soundId, "(%d+)$")
+                    if numericId and soundLookup[numericId] then
+                        found = true
+                        break
+                    end
+                end
+            end
+        end
+        
+        soundCache[character] = found
+        return found
+    end
+    
+    local function GetMoveCompensation()
+        if not LocalPlayer.Character then return 0 end
+        local rootPart = SafeCall(function() return LocalPlayer.Character:FindFirstChild("HumanoidRootPart") end)
+        if not rootPart then return 0 end
+        
+        local velocity = rootPart.Velocity
+        local speed = math.sqrt(velocity.X^2 + velocity.Y^2 + velocity.Z^2)
+        return config_007n7.MoveCompBase + (speed * config_007n7.MoveCompFactor)
+    end
+    
+    local function IsFastKiller(killer)
+        if not killer then return false end
+        local killerRoot = SafeCall(function() return killer:FindFirstChild("HumanoidRootPart") end)
+        if not killerRoot then return false end
+        
+        local killerVel = killerRoot.Velocity
+        local killerSpeed = math.sqrt(killerVel.X^2 + killerVel.Y^2 + killerVel.Z^2)
+        return killerSpeed > config_007n7.MinAttackSpeed
+    end
+    
+    local function GetTotalDetectionRange(killer)
+        local base = config_007n7.BaseDistance
+        local moveBonus = GetMoveCompensation()
+        local predict = 0
+        local pingBonus = GetPingCompensation() * 5
+        
+        if config_007n7.EnablePrediction and killer then
+            local killerRoot = SafeCall(function() return killer:FindFirstChild("HumanoidRootPart") end)
+            if killerRoot then
+                local killerVel = killerRoot.Velocity
+                local killerSpeed = math.sqrt(killerVel.X^2 + killerVel.Y^2 + killerVel.Z^2)
+                
+                if killerSpeed > config_007n7.SpeedThreshold then
+                    predict = math.min(
+                        config_007n7.PredictMax, 
+                        config_007n7.PredictBase + (killerSpeed * config_007n7.PredictFactor)
+                    )
+                end
+                
+                if IsFastKiller(killer) then
+                    predict = predict * config_007n7.FastKillerAdjust
+                end
+            end
+        end
+        
+        return base + moveBonus + predict + pingBonus
+    end
+    
+    local function IsTargetingMe(killer)
+        local myCharacter = LocalPlayer.Character
+        if not myCharacter then return false end
+        
+        local myRoot = SafeCall(function() return myCharacter:FindFirstChild("HumanoidRootPart") end)
+        local killerRoot = SafeCall(function() return killer and killer:FindFirstChild("HumanoidRootPart") end)
+        if not myRoot or not killerRoot then return false end
+        
+        local directionToMe = (myRoot.Position - killerRoot.Position).Unit
+        local killerLook = killerRoot.CFrame.LookVector
+        
+        local dot = directionToMe:Dot(killerLook)
+        local angle = math.deg(math.acos(math.clamp(dot, -1, 1)))
+        
+        return angle <= config_007n7.TargetAngle
+    end
+    
+    local function GetThreateningKillers()
+        local killers = {}
+        local killersFolder = SafeCall(function() 
+            return workspace:FindFirstChild("Killers") or (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers"))
+        end)
+        if not killersFolder then return killers end
+        
+        local myCharacter = LocalPlayer.Character
+        if not myCharacter then return killers end
+        
+        local myRoot = SafeCall(function() return myCharacter:FindFirstChild("HumanoidRootPart") end)
+        if not myRoot then return killers end
+        
+        for _, killer in ipairs(killersFolder:GetChildren()) do
+            if SafeCall(function() return killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") end) then
+                local killerRoot = killer.HumanoidRootPart
+                local distance = (myRoot.Position - killerRoot.Position).Magnitude
+                local detectionRange = GetTotalDetectionRange(killer)
+                
+                local isThreatening = false
+                
+                if distance <= detectionRange then
+                    if HasTargetSound(killer) then
+                        isThreatening = true
+                    elseif distance <= 8 then
+                        isThreatening = IsTargetingMe(killer)
+                    end
+                end
+                
+                if isThreatening then
+                    table.insert(killers, killer)
+                end
+            end
+        end
+        
+        return killers
+    end
+    
+    local function GetAdjustedCooldown()
+        local ping = GetPing()
+        return math.max(0.05, config_007n7.BlockCooldown - (ping / 1000 * 0.5))
+    end
+    
+    local function PerformBlock()
+        local now = os.clock()
+        if now - lastBlockTime >= GetAdjustedCooldown() then
+            SafeCall(function()
+                local args = {
+                    "UseActorAbility",
+                    {
+                        buffer.fromstring("\"Clone\"")
+                    }
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
+                lastBlockTime = now
+            end)
+        end
+    end
+    
+    local function CombatLoop()
+        local currentTime = os.clock()
+        if currentTime - lastScanTime >= config_007n7.ScanInterval then
+            lastScanTime = currentTime
+            local killers = GetThreateningKillers()
+            if #killers > 0 then
+                PerformBlock()
+            end
+        end
+    end
+    
+    ZZ:AddToggle("AutoBlockToggle", {
+        Text = "自动分身",
+        Default = false,
+        Callback = function(enabled)
+            config_007n7.Enabled = enabled
+            if enabled then
+                if combatConnection then
+                    SafeCall(function() combatConnection:Disconnect() end)
+                end
+                combatConnection = RunService.Stepped:Connect(function()
+                    SafeCall(CombatLoop)
+                end)
+            elseif combatConnection then
+                SafeCall(function() combatConnection:Disconnect() end)
+                combatConnection = nil
+            end
+        end
+    })
+    
+    ZZ:AddSlider("BaseDistance", {
+        Text = "格挡距离",
+        Default = 18,
+        Min = 5,
+        Max = 30,
+        Rounding = 1,
+        Callback = function(value)
+            config_007n7.BaseDistance = value
+        end
+    })
+    
+    ZZ:AddSlider("TargetAngleSlider", {
+        Text = "格挡角度",
+        Default = 70,
+        Min = 10,
+        Max = 180,
+        Rounding = 1,
+        Callback = function(value)
+            config_007n7.TargetAngle = value
+        end
+    })
+    
+    ZZ:AddToggle("VisualizationToggle", {
+        Text = "可视化",
+        Default = false,
+        Callback = function(enabled)
+            config_007n7.ShowVisualization = enabled
+            if enabled then
+                CreateVisualization()
+            else
+                for _, part in ipairs(visualizationParts) do
+                    SafeCall(function() part:Destroy() end)
+                end
+                visualizationParts = {}
+            end
+        end
+    })
+    
+    LocalPlayer.CharacterAdded:Connect(function()
+        if config_007n7.Enabled and combatConnection then
+            SafeCall(function() combatConnection:Disconnect() end)
+            combatConnection = RunService.Stepped:Connect(CombatLoop)
+        end
+        if config_007n7.ShowVisualization then
+            CreateVisualization()
+        end
+    end)
+end)
+
 local SM = Tabs.FightingKilling:AddLeftGroupbox('杀戮功能[杀手]')
-
-
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -9500,216 +10386,6 @@ MVP:AddSlider('MySlider4', {
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local PZ = Tabs.Pizza:AddLeftGroupbox("披萨")
-
-local pizzaConnection = nil
-local pizzaTPConnection = nil
-local pizzaAttractionActive = false
-local pizzaCache = {}
-local pizzaEffects = {}
-
-local function createPizzaEffect(pizza, effectName)
-    if not pizza:FindFirstChild(effectName) then
-        local effect = Instance.new("ParticleEmitter")
-        effect.Name = effectName
-        effect.Texture = "rbxassetid://242487987"
-        effect.LightEmission = 0.8
-        effect.Size = NumberSequence.new(0.5)
-        if effectName == "TeleportEffect" then
-            effect.Lifetime = NumberRange.new(0.5)
-        end
-        effect.Parent = pizza
-        pizzaEffects[pizza] = effect
-        return effect
-    end
-    return pizzaEffects[pizza]
-end
-
-local function cleanUpEffects()
-    for pizza, effect in pairs(pizzaEffects) do
-        if not pizza or not pizza.Parent then
-            effect:Destroy()
-            pizzaEffects[pizza] = nil
-        end
-    end
-end
-
-local function findClosestPizza(rootPart)
-    local pizzaFolder = workspace:FindFirstChild("Pizzas") or workspace.Map
-    if not pizzaFolder then return nil end
-    
-    local closestPizza, closestDistance = nil, math.huge
-    for _, pizza in ipairs(pizzaFolder:GetDescendants()) do
-        if pizza:IsA("BasePart") and pizza.Name == "Pizza" and not pizzaCache[pizza] then
-            local distance = (rootPart.Position - pizza.Position).Magnitude
-            if distance < closestDistance then
-                closestPizza = pizza
-                closestDistance = distance
-            end
-        end
-    end
-    return closestPizza
-end
-
-PZ:AddToggle("AEP", {
-    Text = "自动吃披萨(追踪传送)",
-    Default = false,
-    Tooltip = "当生命值低于设定值时自动吸引附近的披萨",
-    Callback = function(enabled)
-        _G.AutoEatPizza = enabled
-        
-        if pizzaConnection then
-            pizzaConnection:Disconnect()
-            pizzaConnection = nil
-        end
-        
-        if enabled then
-            pizzaConnection = RunService.Heartbeat:Connect(function()
-                local player = Players.LocalPlayer
-                local character = player.Character
-                if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then
-                    return
-                end
-                
-                local humanoid = character.Humanoid
-                local rootPart = character.HumanoidRootPart
-                
-                if _G.HealthEatPizza and humanoid.Health >= _G.HealthEatPizza then
-                    return
-                end
-                
-                local closestPizza = findClosestPizza(rootPart)
-                if closestPizza then
-                    closestPizza.CFrame = closestPizza.CFrame:Lerp(
-                        rootPart.CFrame * CFrame.new(0, 0, -2),
-                        0.5
-                    )
-                    createPizzaEffect(closestPizza, "AttractEffect")
-                end
-                cleanUpEffects()
-            end)
-        end
-    end
-})
-
-PZ:AddToggle("ATP", {
-    Text = "自动吃披萨(传送)",
-    Default = false,
-    Tooltip = "当生命值低于设定值时自动将最近的披萨传送到玩家",
-    Callback = function(enabled)
-        _G.AutoTeleportPizza = enabled
-        
-        if pizzaTPConnection then
-            pizzaTPConnection:Disconnect()
-            pizzaTPConnection = nil
-        end
-        
-        if enabled then
-            pizzaTPConnection = RunService.Heartbeat:Connect(function()
-                local player = Players.LocalPlayer
-                local character = player.Character
-                if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then
-                    return
-                end
-                
-                local humanoid = character.Humanoid
-                local rootPart = character.HumanoidRootPart
-                
-                if _G.HealthEatPizza and humanoid.Health >= _G.HealthEatPizza then
-                    return
-                end
-                
-                local closestPizza = findClosestPizza(rootPart)
-                if closestPizza then
-                    closestPizza.CFrame = rootPart.CFrame * CFrame.new(0, 0, -2)
-                    local effect = createPizzaEffect(closestPizza, "TeleportEffect")
-                    task.delay(1, function()
-                        if effect and effect.Parent then
-                            effect:Destroy()
-                            pizzaEffects[closestPizza] = nil
-                        end
-                    end)
-                end
-                cleanUpEffects()
-            end)
-        end
-    end
-})
-
-PZ:AddDivider()  
-
-PZ:AddSlider("HealthThreshold", {
-    Text = "生命值",
-    Default = 50,
-    Min = 10,
-    Max = 130,
-    Rounding = 0,
-    Tooltip = "当生命值低于设置生命值吃披萨",
-    
-    Callback = function(value)
-        _G.HealthEatPizza = value
-    end
-})
-
-PZ:AddDivider()  
-
-PZ:AddButton("InstantAttract", {
-    Text = "将披萨送到脚下",
-    Func = function()
-        local player = Players.LocalPlayer
-        local character = player.Character
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            local rootPart = character.HumanoidRootPart
-            for _, pizza in ipairs(workspace:GetDescendants()) do
-                if pizza:IsA("BasePart") and pizza.Name == "Pizza" then
-                    pizza.CFrame = rootPart.CFrame
-                    break
-                end
-            end
-        end
-    end
-})
-
-local Misc = Tabs.Pizza:AddRightGroupbox('自动吃披萨［2］')
-
-Misc:AddSlider("HealthEatPizza",{
-Text = "生命值",
-Min = 1,
-Default = 50,
-Max = 50,
-Rounding = 1,
-Compact = true,
-Callback = function(v)
-_G.HealthEatPizza = v
-end})
-Misc:AddSlider("DistanceEatPizza",{
-Text = "距离范围",
-Min = 10,
-Default = 10,
-Max = 50,
-Rounding = 1,
-Compact = true,
-Callback = function(v)
-_G.DistanceEatPizza = v
-end})
-
-_G.HealthEatPizza = 50
-_G.DistanceEatPizza = 10
-
-Misc:AddToggle("AlwaysEatPizza",{
-Text = "自动吃披萨",
-Default = false,
-Callback = function(v)
-_G.AlwaysEatPizza = v
-game:GetService("RunService").RenderStepped:Connect(function()
-if _G.AlwaysEatPizza and workspace.Map:FindFirstChild("Ingame"):FindFirstChild("Pizza") then
-if game.Players.LocalPlayer.Character.Humanoid.Health < _G.HealthEatPizza and (workspace.Map:FindFirstChild("Ingame"):FindFirstChild("Pizza").Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < _G.DistanceEatPizza then
-workspace.Map:FindFirstChild("Ingame"):FindFirstChild("Pizza").Position = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
-end
-end
-end)
-end})
-
 local Generator = Tabs.Generator:AddLeftGroupbox("发动机")
 
 Generator:AddDropdown('GeneratorFixMode', {
@@ -9781,6 +10457,7 @@ Generator:AddToggle("AutoStartGenerator", {
     Text = "自动互动发动机",
     Default = false,
     Callback = function(bool)
+    local gameMap = workspace.Map
         _G.autoGen = bool
         task.spawn(function()
             while _G.autoGen and task.wait() do
@@ -9883,70 +10560,14 @@ end
 
 --]]
 
-local MenuGroup = Tabs.Settings:AddLeftGroupbox("调试", "wrench")
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
 
-MenuGroup:AddToggle("KeybindMenuOpen", {
-    Default = Library.KeybindFrame.Visible,
-    Text = "快捷菜单",
-    Callback = function(value)
-        Library.KeybindFrame.Visible = value
-    end,
-})
+ThemeManager:SetFolder("LightStar")
+SaveManager:SetFolder("LightStar/Game")
+SaveManager:SetSubFolder("Forsaken")
 
---[[
-MenuGroup:AddToggle("ShowMobileLockButton", {
-	Text = "显示锁定按钮 (手机)",
-	Default = true,
-	Callback = function(Value)
-		Library.ShowMobileLockButton = Value
-	end,
-})
---]]
-MenuGroup:AddDropdown("NotificationSide", {
-	Values = {  "Top-Right", "Top-Left", "Bottom-Right", "Bottom-Left" },
-	Default = "Top-Right",
-
-	Text = "通知位置",
-
-	Callback = function(Value)
-		Library:SetNotifySide(Value)
-	end,
-})
-MenuGroup:AddDropdown("DPIDropdown", {
-	Values = { "50%", "75%", "100%", "125%", "150%", "175%", "200%" },
-	Default = "100%",
-
-	Text = "DPI菜单缩小",
-
-	Callback = function(Value)
-		Value = Value:gsub("%%", "")
-		local DPI = tonumber(Value)
-
-		Library:SetDPIScale(DPI)
-	end,
-})
-
-MenuGroup:AddDivider()  
-MenuGroup:AddLabel("菜单打开")  
-    :AddKeyPicker("MenuKeybind", { 
-        Default = "RightShift",  
-        NoUI = true,            
-        Text = "Menu keyboard"    
-})
-
-MenuGroup:AddButton("摧毁界面", function()
-    Library:Unload()  
-end)
-
-ThemeManager:SetLibrary(Library)  
-SaveManager:SetLibrary(Library)   
-SaveManager:IgnoreThemeSettings() 
-SaveManager:SetIgnoreIndexes({ "MenuKeybind" })  
-ThemeManager:SetFolder("LightStar")            
-SaveManager:SetFolder("LightStar/Game")  
-SaveManager:SetSubFolder("Forsaken")       
 SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
-
 SaveManager:LoadAutoloadConfig()
 
