@@ -29,6 +29,7 @@ local Options = Library.Options
 local Toggles = Library.Toggles
 
 -- 准备就读
+--[[
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
@@ -40,6 +41,10 @@ local replicatedStorage = game:GetService("ReplicatedStorage")
 local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
 local gameMap = workspace.Map
 local actor = Network:WaitForChild("RemoteEvent")
+--]]
+
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
 
 Library.ForceCheckbox = false -- 默认点击开关盒子 (false / true)
 Library.ShowToggleFrameInKeybinds = true 
@@ -62,12 +67,12 @@ local Tabs = {
     Main = Window:AddTab('玩家','user','这是主要的!!!'),
     Aimbot = Window:AddTab('自瞄','crosshair','让你自瞄的更准!!!'),
     Esp = Window:AddTab('ESP','scan-eye','让你能够透视他们!!!'),
-    NotificationListen = Window:AddTab('通知提示','eye','让你帮助你监听杀手!!!'),
+    NotificationListen = Window:AddTab('通知提示','mails','让你帮助你监听杀手!!!'),
     FightingKilling = Window:AddTab('战斗&杀戮','swords','让变得打击更轻松!!!'),
-    BanEffect = Window:AddTab('反效果','ban','让你无法受到效果!!!'),
+    BanEffect = Window:AddTab('反效果','cpu','让你无法受到效果!!!'),
     AnimationAction = Window:AddTab('动作','file','让你在别人面前动作炫酷!!!'),
     PhysicalStrength = Window:AddTab('体力','zap','让你奔跑体力最大!!!'),
-    Generator = Window:AddTab('发动机','cpu','让你修发动机更快!!!'),
+    Generator = Window:AddTab('发动机','printer','让你修发动机更快!!!'),
     Pizza = Window:AddTab('披萨','pizza','让你快速吃到披萨!!!'),
     ["UI Settings"] = Window:AddTab("设置","settings",'设置&调试'),
 }
@@ -121,7 +126,6 @@ function killerAttack()
         Network.RemoteEvent:FireServer("UseActorAbility", {buffer.fromstring("\"Carving Slash\"")})
     end
 end
-
 
 local new = Tabs.new:AddLeftGroupbox('新闻','rocket')
 
@@ -481,7 +485,7 @@ KillerSurvival:AddButton("FixLag", {
 })
 
 KillerSurvival:AddButton("DeceiveForgedUserMode", {
-    Text = "欺骗伪造用户模式",
+    Text = "<font color=\"rgb(0, 0, 255)\">欺骗伪造用户模式</font>",
     Tooltip = "拍视频和直播时点击它 你的信息 的 昵称 和 用户名 改变了!!!可以让别人挂不了你 相当于欺骗!",
     Func = function()
 local HttpService = game:GetService("HttpService")
@@ -784,6 +788,105 @@ SM:AddSlider("BackstabRange", {
 
 
 
+local ZZ = Tabs.Main:AddLeftGroupbox('<font color=\"rgb(255, 0, 0)\">飞行[最危险]</font>')
+
+local RunService = game:GetService("RunService") --获取玩家操控位置函数
+local CFSpeed = 50
+local CFLoop = nil
+
+local function StartCFly()
+    local speaker = game.Players.LocalPlayer
+    local character = speaker.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass('Humanoid')
+    local head = character:WaitForChild("Head")
+    
+    if not humanoid or not head then return end
+    
+    humanoid.PlatformStand = true
+    head.Anchored = true
+    
+    if CFLoop then 
+        CFLoop:Disconnect() 
+        CFLoop = nil
+    end
+    
+    CFLoop = RunService.Heartbeat:Connect(function(deltaTime)
+        if not character or not humanoid or not head then 
+            if CFLoop then 
+                CFLoop:Disconnect() 
+                CFLoop = nil
+            end
+            return 
+        end
+        
+        local moveDirection = humanoid.MoveDirection * (CFSpeed * deltaTime)
+        local headCFrame = head.CFrame
+        local camera = workspace.CurrentCamera
+        local cameraCFrame = camera.CFrame
+        local cameraOffset = headCFrame:ToObjectSpace(cameraCFrame).Position
+        cameraCFrame = cameraCFrame * CFrame.new(-cameraOffset.X, -cameraOffset.Y, -cameraOffset.Z + 1)
+        local cameraPosition = cameraCFrame.Position
+        local headPosition = headCFrame.Position
+
+        local objectSpaceVelocity = CFrame.new(cameraPosition, Vector3.new(headPosition.X, cameraPosition.Y, headPosition.Z)):VectorToObjectSpace(moveDirection)
+        head.CFrame = CFrame.new(headPosition) * (cameraCFrame - cameraPosition) * CFrame.new(objectSpaceVelocity)
+    end)
+end
+
+local function StopCFly()
+    local speaker = game.Players.LocalPlayer
+    local character = speaker.Character
+    
+    if CFLoop then
+        CFLoop:Disconnect()
+        CFLoop = nil
+    end
+    
+    if character then
+        local humanoid = character:FindFirstChildOfClass('Humanoid')
+        local head = character:FindFirstChild("Head")
+        
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+        if head then
+            head.Anchored = false
+        end
+    end
+end
+
+ZZ:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[危险]</font></b> 此功能对于玩家资源丰富的来说是最危险的 建议别开")
+
+ZZ:AddToggle("CFlyToggle", {
+    Text = "<font color=\"rgb(255, 0, 0)\">飞行</font>",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            StartCFly()
+        else
+            StopCFly()
+        end
+    end
+})
+
+ZZ:AddSlider("CFlySpeed", {
+    Text = "<font color=\"rgb(255, 0, 0)\">飞行速度</font>",
+    Default = 50,
+    Min = 1,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(Value)
+        CFSpeed = Value
+    end
+})
+
+
+
+
+
+
 
 local Game = Tabs.Main:AddLeftGroupbox('对局游戏')
 
@@ -981,7 +1084,476 @@ end
 
 
 
+local AntiBan = Tabs.Main:AddRightGroupbox("绕过反作弊")
 
+do
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local LocalizationService = game:GetService("LocalizationService")
+    local RunService = game:GetService("RunService")
+
+    shared.AntiBanSafe = shared.AntiBanSafe or {running = false, hooks = {}}
+    local data = shared.AntiBanSafe
+
+    local oldNamecall, oldIndex
+    local protectionThread
+
+    -- 初始化hooks表
+    data.hooks = data.hooks or {
+        requestHooked = false,
+        findHooked = false,
+        bypassHooked = false
+    }
+
+    local function safe(func, ...)
+        local ok, res = pcall(func, ...)
+        if ok then return res end
+        return nil
+    end
+
+    local function disableReportFlags()
+        if type(setfflag) == "function" then
+            pcall(function()
+                setfflag("AbuseReportScreenshot", "False")
+                setfflag("AbuseReportScreenshotPercentage", "0")
+                setfflag("AbuseReportEnabled", "False")
+                setfflag("ReportAbuseMenu", "False")
+                setfflag("EnableAbuseReportScreenshot", "False")
+                setfflag("AbuseReportVideo", "False")
+                setfflag("AbuseReportVideoPercentage", "0")
+                setfflag("VideoCaptureEnabled", "False")
+                setfflag("RecordVideo", "False")
+            end)
+        end
+    end
+
+    local function hookRequests()
+        if data.hooks.requestHooked then return true end
+        
+        local oldRequest = (syn and syn.request) or (request and request) or (http_request and http_request)
+        if type(oldRequest) == "function" and type(hookfunction) == "function" then
+            local success = pcall(function()
+                hookfunction(oldRequest, function(req)
+                    if req and req.Url and tostring(req.Url):lower():find("abuse") then
+                        return {StatusCode = 200, Body = "Blocked"}
+                    end
+                    return oldRequest(req)
+                end)
+            end)
+            
+            if success then
+                data.hooks.requestHooked = true
+                return true
+            end
+        end
+        return false
+    end
+
+    local function hookFindFirstChild()
+        if data.hooks.findHooked then return true end
+        
+        local oldFind = workspace.FindFirstChild
+        if type(oldFind) == "function" and type(hookfunction) == "function" then
+            local success = pcall(function()
+                hookfunction(oldFind, function(self, name, ...)
+                    if checkcaller and checkcaller() then 
+                        return oldFind(self, name, ...) 
+                    end
+                    if name and tostring(name):lower():find("screenshot") then 
+                        return nil 
+                    end
+                    if name and tostring(name):lower():find("video") then 
+                        return nil 
+                    end
+                    return oldFind(self, name, ...)
+                end)
+            end)
+            
+            if success then
+                data.hooks.findHooked = true
+                return true
+            end
+        end
+        return false
+    end
+
+    local function setupMetatableHooks()
+        if data.hooks.bypassHooked then return true end
+        
+        if getrawmetatable and hookmetamethod and newcclosure then
+            local success = pcall(function()
+                local mt = getrawmetatable(game)
+                if not mt then return false end
+                
+                setreadonly(mt, false)
+                
+                -- 保存原始方法
+                oldNamecall = oldNamecall or mt.__namecall
+                oldIndex = oldIndex or mt.__index
+
+                -- 设置namecall hook
+                mt.__namecall = newcclosure(function(self, ...)
+                    if checkcaller and checkcaller() then
+                        return oldNamecall(self, ...)
+                    end
+                    
+                    local method = getnamecallmethod()
+                    local args = {...}
+
+                    if (method == "Kick" or method == "Ban") and self == LocalPlayer then 
+                        return nil 
+                    end
+
+                    if (method == "FireServer" or method == "InvokeServer") and args[1] then
+                        local msg = tostring(args[1]):lower()
+                        if msg:find("kick") or msg:find("ban") or msg:find("report") then 
+                            return nil 
+                        end
+                    end
+
+                    if self == LocalizationService and method == "GetCountryRegionForPlayerAsync" then
+                        local success, result = pcall(function()
+                            return LocalizationService:GetCountryRegionForPlayerAsync(LocalPlayer)
+                        end)
+                        if success then return result else return "US" end
+                    end
+
+                    return oldNamecall(self, ...)
+                end)
+
+                -- 设置index hook
+                mt.__index = newcclosure(function(t, k)
+                    if checkcaller and checkcaller() then
+                        return oldIndex(t, k)
+                    end
+                    
+                    local key = tostring(k):lower()
+                    if key:find("kick") or key:find("ban") or key:find("report") then 
+                        return function() return nil end 
+                    end
+                    return oldIndex(t, k)
+                end)
+
+                setreadonly(mt, true)
+            end)
+            
+            if success then
+                data.hooks.bypassHooked = true
+                return true
+            end
+        end
+        return false
+    end
+
+    local function restoreMetatableHooks()
+        if getrawmetatable and oldNamecall and oldIndex then
+            pcall(function()
+                local mt = getrawmetatable(game)
+                if mt then
+                    setreadonly(mt, false)
+                    mt.__namecall = oldNamecall
+                    mt.__index = oldIndex
+                    setreadonly(mt, true)
+                end
+            end)
+        end
+    end
+
+    local function startProtectionLoop()
+        if protectionThread then
+            task.cancel(protectionThread)
+        end
+        
+        protectionThread = task.spawn(function()
+            local lastCheck = os.clock()
+            local checkCount = 0
+            
+            while data.running do
+                local currentTime = os.clock()
+                
+                -- 每2秒执行一次完整的flag检查
+                if currentTime - lastCheck >= 2 then
+                    disableReportFlags()
+                    lastCheck = currentTime
+                    checkCount = checkCount + 1
+                    
+                    -- 每10次检查（20秒）输出一次调试信息
+                    if checkCount % 10 == 0 then
+                        print(string.format("[绕过反作弊] 保护循环运行 - 检查 #%d", checkCount))
+                    end
+                end
+                
+                -- 使用小延迟避免占用过多CPU
+                task.wait(0.1)
+            end
+            print("[绕过反作弊] 保护循环停止")
+        end)
+    end
+
+    local function startAntiBanSafe()
+        if data.running then 
+            Library:Notify("LightStar-提示\n反作弊绕过已在运行中")
+            return true
+        end
+        
+        -- 检查必要的exploit函数
+        if not (getrawmetatable and hookmetamethod and newcclosure) then
+            Library:Notify("LightStar-提示\nExploit不支持必要的函数")
+            return false
+        end
+
+        data.running = true
+
+        -- 异步执行避免卡顿
+        task.spawn(function()
+            local hooksApplied = 0
+            local totalHooks = 3
+            
+            -- 应用hooks
+            if hookRequests() then hooksApplied = hooksApplied + 1 end
+            if hookFindFirstChild() then hooksApplied = hooksApplied + 1 end
+            if setupMetatableHooks() then hooksApplied = hooksApplied + 1 end
+            
+            -- 启动保护循环
+            startProtectionLoop()
+
+            if hooksApplied > 0 then
+                Library:Notify(string.format("LightStar-提示\n绕过反作弊已开启！(%d/%d hooks)", hooksApplied, totalHooks))
+                print("[AntiCheat] Anti-ban protection activated successfully")
+            else
+                Library:Notify("LightStar-警告\n部分hook应用失败")
+            end
+        end)
+        
+        return true
+    end
+
+    local function stopAntiBanSafe()
+        if not data.running then return end
+        
+        print("[绕过反作弊] 停止防禁保...")
+        data.running = false
+        
+        -- 停止保护线程
+        if protectionThread then
+            task.cancel(protectionThread)
+            protectionThread = nil
+        end
+        
+        -- 异步恢复hooks
+        task.spawn(function()
+            restoreMetatableHooks()
+            
+            -- 重置hook状态
+            data.hooks.requestHooked = false
+            data.hooks.findHooked = false
+            data.hooks.bypassHooked = false
+            oldNamecall = nil
+            oldIndex = nil
+            
+            Library:Notify("LightStar-提示\n反作弊绕过已关闭")
+            print("[绕过反作弊] 绕过反作弊完全停止")
+        end)
+    end
+
+    local function toggleAntiBan(enabled)
+        if enabled then
+            return startAntiBanSafe()
+        else
+            stopAntiBanSafe()
+            return true
+        end
+    end
+
+    
+AntiBan:AddToggle("AntiBanAC", {
+        Text = "绕过AC",
+        Default = data.running or false,
+        Callback = function(enabled)
+            local success = toggleAntiBan(enabled)
+            if not success and enabled then
+           
+                task.spawn(function()
+                    wait(0.1)
+                    if AntiBan:GetToggle("AntiBanToggle") then
+                        AntiBan:GetToggle("AntiBanToggle"):SetValue(false)
+                    end
+                end)
+            end
+        end
+})
+
+   
+    if data.running then
+        task.spawn(function()
+            wait(1)
+            if AntiBan:GetToggle("AntiBanToggle") then
+                AntiBan:GetToggle("AntiBanToggle"):SetValue(true)
+                print("[绕过反作弊] 恢复以前的绕过反作弊保护状态")
+            end
+        end)
+    end
+
+  
+    print(string.format("[绕过反作弊] 初始化 - 运行: %s", tostring(data.running)))
+end
+
+
+
+
+do
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local LocalizationService = game:GetService("LocalizationService")
+
+    shared.AntiBanSafe = shared.AntiBanSafe or {running = false, hooks = {}}
+    local data = shared.AntiBanSafe
+
+    local oldNamecall, oldIndex
+    local protectionThread
+
+    local function safe(func, ...)
+        local ok, res = pcall(func, ...)
+        if ok then return res end
+    end
+
+    local function disableReportFlags()
+        if typeof(setfflag) == "function" then
+            pcall(function()
+                setfflag("AbuseReportScreenshot", "False")
+                setfflag("AbuseReportScreenshotPercentage", "0")
+                setfflag("AbuseReportEnabled", "False")
+                setfflag("ReportAbuseMenu", "False")
+                setfflag("EnableAbuseReportScreenshot", "False")
+                setfflag("AbuseReportVideo", "False")
+                setfflag("AbuseReportVideoPercentage", "0")
+                setfflag("VideoCaptureEnabled", "False")
+                setfflag("RecordVideo", "False")
+            end)
+        end
+    end
+
+    local function setFlagsOn()
+        if typeof(setfflag) == "function" then
+            pcall(function()
+                setfflag("AbuseReportScreenshot", "True")
+                setfflag("AbuseReportScreenshotPercentage", "100")
+            end)
+        end
+    end
+
+    local function hookRequests()
+        if data.hooks.requestHooked then return end
+        local oldRequest = (syn and syn.request) or request or http_request
+        if typeof(oldRequest) == "function" and typeof(hookfunction) == "function" then
+            hookfunction(oldRequest, function(req)
+                if req and req.Url and tostring(req.Url):lower():find("abuse") then
+                    return {StatusCode = 200, Body = "Blocked"}
+                end
+                return oldRequest(req)
+            end)
+            data.hooks.requestHooked = true
+        end
+    end
+
+    local function hookFindFirstChild()
+        if data.hooks.findHooked then return end
+        local oldFind = workspace.FindFirstChild
+        if typeof(oldFind) == "function" and typeof(hookfunction) == "function" then
+            hookfunction(oldFind, function(self, name, ...)
+                if name and tostring(name):lower():find("screenshot") then return nil end
+                if name and tostring(name):lower():find("video") then return nil end
+                return oldFind(self, name, ...)
+            end)
+            data.hooks.findHooked = true
+        end
+    end
+
+    local function safeBypass()
+        if getrawmetatable and hookmetamethod and newcclosure then
+            local mt = getrawmetatable(game)
+            setreadonly(mt, false)
+            oldNamecall = oldNamecall or mt.__namecall
+            oldIndex = oldIndex or mt.__index
+
+            mt.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+
+                if (method == "Kick" or method == "Ban") and self == LocalPlayer then return nil end
+
+                if (method == "FireServer" or method == "InvokeServer") and args[1] then
+                    local msg = tostring(args[1]):lower()
+                    if msg:find("kick") or msg:find("ban") then return nil end
+                end
+
+                if self == LocalizationService and method == "GetCountryRegionForPlayerAsync" then
+                    local success, result = pcall(function()
+                        return LocalizationService:GetCountryRegionForPlayerAsync(LocalPlayer)
+                    end)
+                    if success then return result else return "US" end
+                end
+
+                return oldNamecall(self, ...)
+            end)
+
+            mt.__index = newcclosure(function(t, k)
+                local key = tostring(k):lower()
+                if key:find("kick") or key:find("ban") then return function() return nil end end
+                return oldIndex(t, k)
+            end)
+
+            setreadonly(mt, true)
+        end
+    end
+
+    local function restoreHooks()
+        if getrawmetatable then
+            local mt = getrawmetatable(game)
+            setreadonly(mt, false)
+            if oldNamecall then mt.__namecall = oldNamecall end
+            if oldIndex then mt.__index = oldIndex end
+            setreadonly(mt, true)
+            oldNamecall, oldIndex = nil, nil
+        end
+    end
+
+    local function startAntiBanSafe()
+        if data.running then return end
+        data.running = true
+
+        safe(hookRequests)
+        safe(hookFindFirstChild)
+        safe(safeBypass)
+
+        protectionThread = task.spawn(function()
+            while data.running do
+                safe(disableReportFlags)
+                task.wait(0.2)
+            end
+        end)
+    end
+
+    local function stopAntiBanSafe()
+        data.running = false
+        protectionThread = nil
+        restoreHooks()
+        setFlagsOn()
+    end
+
+AntiBan:AddToggle("AntiBanV2", {
+        Text = "绕过反作弊V2",
+        Description = "保护您免受封禁和举报",
+        Default = false,
+        Callback = function(state)
+            if state then
+                startAntiBanSafe()
+            else
+                stopAntiBanSafe()
+            end
+        end
+})
+end
 
 
 
@@ -1282,44 +1854,22 @@ ZZ:AddButton("TeleportItems", {
     end
 })
 
-local Auto = Tabs.Main:AddRightGroupbox('自动')
+local AutoChanceCoinFlip = Tabs.Main:AddRightGroupbox('自动Chance硬币')
 
-Auto:AddSlider("AutoShedlesktlyFriedChickenHealth",{
-    Text = "低于血量",
-    Min = 15,
-    Default = 65,
-    Max = 95,
-    Callback = function()
-       end
-})
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
 
-Auto:AddToggle("AutoShedlesktlyFriedChicken", { 
-    Text = "自动谢德鸡腿",
-    Tooltip = "血量低于上方的值就会自动吃鸡腿技能",
-    Callback = function()
-        while Toggles.AutoShedlesktlyFriedChicken.Value and task.wait() do
-            pcall(function()
-                if isKiller then return end
-                if localPlayer.Character.Humanoid.Health <= Options.AutoShedlesktlyFriedChickenHealth.Value then
-                    actor.FireServer(actor, "UseActorAbility", {buffer.fromstring("\"FriedChicken\"")})
-                end
-            end)
-        end
-    end
-})
-
-Auto:AddDivider()
-
-Auto:AddSlider("AutoChanceCoinFlipmew",{
+AutoChanceCoinFlip:AddSlider("AutoChanceCoinFlipmew",{
     Text = "#秒抛1次硬币",
     Min = 1.8,
     Default = 2,
     Max = 15,
+    Rounding = 0.1,
     Callback = function()
        end
 })
 
-Auto:AddToggle("AutoChanceCoinFlip", {
+AutoChanceCoinFlip:AddToggle("AutoChanceCoinFlip", {
     Text = "自动Chance抛硬币",
     Default = false,
     Callback = function (cool)
@@ -1404,7 +1954,7 @@ local function chanceAimbot(state)
     CA = state
     if state then
         if game.Players.LocalPlayer.Character.Name ~= "Chance" then
-            Library:Notify("你用的角色不是Chance 无法生效", nil, 4590657391)
+            Library:Notify("你的角色不是Chance 无法生效", nil, 4590657391)
             return
         end
         
@@ -2205,6 +2755,16 @@ local function chanceAimbot(state)
         end
     end
 end
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -6680,51 +7240,66 @@ local function deleteNewNoli()
     local killersFolder = workspace:WaitForChild("Players")
     local killers = killersFolder:WaitForChild("Killers")
     
-   
     allowedNoli = killers:FindFirstChild("Noli")
+    if not allowedNoli then
+        return
+    end
     
-   
+    if deletionConnection then
+        deletionConnection:Disconnect()
+        deletionConnection = nil
+    end
+    
     deletionConnection = RunService.Heartbeat:Connect(function()
-        for _, child in ipairs(killers:GetChildren()) do
+        allowedNoli = killers:FindFirstChild("Noli")
+        
+        if not allowedNoli then
+            if deletionConnection then
+                deletionConnection:Disconnect()
+                deletionConnection = nil
+            end
+            return
+        end
+        
+        for _, child in killers:GetChildren() do
             if child.Name == "Noli" and child ~= allowedNoli then
                 child:Destroy()
-                Library:Notify("✅ 已删除新Noli: "..child:GetFullName())
             end
         end
     end)
 end
 
-ZZ:AddToggle("NoliDeleter", {
+ZZ:AddToggle("AntiFakeNoliDeleter", {
     Text = "反假Noli",
     Default = false,
-    Tooltip = "你的杀手角色是Noli 杀手快到你的时候 必须关闭这功能",
+    Tooltip = "如果你的杀手角色是Noli 杀手快到你的时候 你必须关闭此功能",
     Callback = function(enabled)
         noliDeleterActive = enabled
         
         if enabled then
-          
-            local success, err = pcall(function()
-                deleteNewNoli()
-            end)
-            
-            if success then
-                Library:Notify("🟢 Noli清理器已激活 白名单: "..(allowedNoli and allowedNoli:GetFullName() or "无"))
-            else
-                warn("❌ 初始化失败: "..tostring(err))
-                noliDeleterActive = false
-            end
-        else
-         
             if deletionConnection then
                 deletionConnection:Disconnect()
                 deletionConnection = nil
             end
-            Library:Notify("🔴 Noli清理器已停用")
+            
+            local success, err = pcall(function()
+                deleteNewNoli()
+            end)
+            
+            if not success then
+                noliDeleterActive = false
+            end
+        else
+            if deletionConnection then
+                deletionConnection:Disconnect()
+                deletionConnection = nil
+            end
+            allowedNoli = nil
         end
     end
 })
 
-ZZ:AddToggle('VoidRushNoclip', {
+ZZ:AddToggle('NoliVoidRushNoclip', {
     Text = "VoidRush穿墙"
 })
 
@@ -6733,7 +7308,7 @@ task.spawn(function()
         return isKiller and localPlayer.Character and localPlayer.Character.Name == "Noli" and "Dashing" == localPlayer.Character:GetAttribute("VoidRushState")
     end
     while true do
-        if isNoliVoidRush() and Toggles.VoidRushNoclip.Value and (not Toggles.EnableNoclip.Value) then
+        if isNoliVoidRush() and Toggles.NoliVoidRushNoclip.Value and (not Toggles.EnableNoclip.Value) then
             enableNoclip()
         elseif (not isNoliVoidRush()) and (not Toggles.EnableNoclip.Value) then
             disableNoclip()
@@ -6742,7 +7317,7 @@ task.spawn(function()
     end
 end)
 
-ZZ:AddToggle('VoidRushCollision', {
+ZZ:AddToggle('NoliVoidRushCollision', {
     Text = "VoidRush反碰撞"
 })
 
@@ -6752,7 +7327,7 @@ pcall(function()
         local args = {...}
         if type(args[1]) == "string" and string.find(args[1], localPlayer.Name) then
             if string.find(args[1], "VoidRushCollision") then
-                if Toggles.VoidRushCollision.Value then
+                if Toggles.NoliVoidRushCollision.Value then
                     return
                 end
             elseif string.find(args[1], "C00lkiddCollision") then
@@ -7485,7 +8060,6 @@ Disabled:AddToggle("RemoveChargeEnded", {
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- 创建一个体力功能组
 local MVP = Tabs.PhysicalStrength:AddLeftGroupbox("体力功能")
 
 -- 体力系统设置
@@ -8979,7 +9553,7 @@ local Generator = Tabs.Generator:AddLeftGroupbox("发动机")
 
 Generator:AddDropdown('GeneratorFixMode', {
     Values = {'危险模式', '安全模式', '自调模式'},
-    Default = 3,
+    Default = 2,
     Multi = false,
     Text = '修机模式',
     Searchable = false,
@@ -9185,31 +9759,6 @@ end
 
 
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("调试", "wrench")
-
-MenuGroup:AddButton("Watermark", {
-    Text = "显示水印",
-    Func = function()
-local DPIMenu = Library
-Library.SetDPIScale(DPIMenu, 100)
-local Watermark = Library
-Library.SetWatermarkVisibility(Watermark, true)
-local _ = Players.LocalPlayer
-local _ = Workspace.CurrentCamera
-local Startick = tick()
-local Ping = 0
-local Fps = 60
-local Stats = game:GetService("Stats")
-RunService.RenderStepped:Connect(function()
-    Ping = Ping + 1
-    if tick() - Startick >= 1 then
-        Fps = Ping
-        Startick = tick()
-        Ping = 0
-    end
-    Library:SetWatermark(("LightStar JackEyeKL ♎ %s Fps | %s Ping"):format(math.floor(Fps), math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())))
-end)
-    end
-})
 
 MenuGroup:AddToggle("KeybindMenuOpen", {
     Default = Library.KeybindFrame.Visible,
