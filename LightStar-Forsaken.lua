@@ -16,15 +16,6 @@ local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
 Library:Notify("Loading LightStar for Forsaken",5,4590657391)
 
-local function Notify(Title, Text, Duration)
-    Library:Notify({
-        Title = Title,
-        Description = Text,
-        Time = Duration,
-})
-end
-_G._Notify = Notify
-
 local Options = Library.Options
 local Toggles = Library.Toggles
 
@@ -74,7 +65,7 @@ local Tabs = {
     PhysicalStrength = Window:AddTab('体力','zap','让你奔跑体力最大!!!'),
     Generator = Window:AddTab('发动机','printer','让你修发动机更快!!!'),
     Pizza = Window:AddTab('披萨','pizza','让你快速吃到披萨!!!'),
-    ["UI Settings"] = Window:AddTab("设置","settings",'设置&调试'),
+    Settings = Window:AddTab("设置","settings",'设置&调试'),
 }
 
 local _env = getgenv and getgenv() or {}
@@ -174,7 +165,7 @@ setclipboard("798979110")
 })
 
 Team:AddButton({
-    Text = "复制 LightStar Discord 链接",
+    Text = "复制 LightStar Discord 频道链接",
     Func = function ()
 setclipboard("https://discord.gg/BW55cR7Z")
        end
@@ -691,19 +682,546 @@ end)
    end
 })
 
+local originalPlayerValues = {}
+hiddenStats = false
 
+KillerSurvival:AddToggle("AntiHiddenStats", {
+    Text = "开户隐藏数据",
+    Tooltip = "开启后强制显示玩家的胜负、时长等隐私数据",
+    Default = false,
+    Callback = function(state)
+        hiddenStats = state
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            pcall(function()
+                if not player.PlayerData or not player.PlayerData.Settings or not player.PlayerData.Settings.Privacy then return end
+                
+                if state then
+                    -- 保存原始值
+                    if not originalPlayerValues[player.UserId] then
+                        originalPlayerValues[player.UserId] = {}
+                    end
+                    
+                    local privacy = player.PlayerData.Settings.Privacy
+                    for _, key in ipairs({"HideKillerWins", "HidePlaytime", "HideSurvivorWins"}) do
+                        local value = privacy:FindFirstChild(key)
+                        if value then
+                            originalPlayerValues[player.UserId][key] = value.Value
+                            value.Value = false
+                        end
+                    end
+                else
+                    -- 恢复原始值
+                    if originalPlayerValues[player.UserId] then
+                        local privacy = player.PlayerData.Settings.Privacy
+                        for key, val in pairs(originalPlayerValues[player.UserId]) do
+                            local value = privacy:FindFirstChild(key)
+                            if value then value.Value = val end
+                        end
+                    end
+                end
+            end)
+        end
+        
+        -- 监听新玩家加入
+        if state then
+            Players.PlayerAdded:Connect(function(player)
+                if hiddenStats then
+                    task.wait(1)
+                    pcall(function()
+                        if player.PlayerData and player.PlayerData.Settings and player.PlayerData.Settings.Privacy then
+                            local privacy = player.PlayerData.Settings.Privacy
+                            for _, key in ipairs({"HideKillerWins", "HidePlaytime", "HideSurvivorWins"}) do
+                                local value = privacy:FindFirstChild(key)
+                                if value then value.Value = false end
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
+    end
+})
 
+local ZZ = Tabs.Main:AddLeftGroupbox('自动格挡[Guest 1337]')
 
+local Guest1337AutoBlockConfigV1 = {
+    Enabled = false,
+    BaseDistance = 16,
+    ScanInterval = 0.0005,
+    BlockCooldown = 0.06,
+    MoveCompBase = 1.8,
+    MoveCompFactor = 0.3,
+    SpeedThreshold = 6,
+    PredictBase = 5,
+    PredictMax = 15,
+    PredictFactor = 0.45,
+    TargetAngle = 50,
+    MinAttackSpeed = 10,
+    ShowVisualization = false,
+    EnablePrediction = false,
+    PingCompensation = 0.15,
+    FastKillerAdjust = 1.5,
+    ReactionBoost = 1.2,
+    TargetSoundIds = {
+        "102228729296384", "140242176732868", "112809109188560", "136323728355613",
+        "115026634746636", "84116622032112", "108907358619313", "127793641088496",
+        "86174610237192", "95079963655241", "101199185291628", "119942598489800",
+        "84307400688050", "113037804008732", "105200830849301", "75330693422988",
+        "82221759983649", "81702359653578", "108610718831698", "112395455254818",
+        "109431876587852", "109348678063422", "85853080745515", "12222216"
+    },
+    TargetAnimIds = {
+        "126830014841198", "126355327951215", "121086746534252", "18885909645",
+        "98456918873918", "105458270463374", "83829782357897", "125403313786645",
+        "118298475669935", "82113744478546", "70371667919898", "99135633258223",
+        "97167027849946", "109230267448394", "139835501033932", "126896426760253",
+        "109667959938617", "126681776859538", "129976080405072", "121293883585738",
+        "81639435858902", "137314737492715", "92173139187970"
+    }
+}
 
+pcall(function()
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local RunService = game:GetService("RunService")
+    local Stats = game:GetService("Stats")
+    
+    local soundLookup = {}
+    for _, id in ipairs(Guest1337AutoBlockConfigV1.TargetSoundIds) do
+        soundLookup[id] = true
+        soundLookup["rbxassetid://" .. id] = true
+    end
+    
+    local animLookup = {}
+    for _, id in ipairs(Guest1337AutoBlockConfigV1.TargetAnimIds) do
+        animLookup[id] = true
+        animLookup["rbxassetid://" .. id] = true
+    end
+    
+    local LocalPlayer = Players.LocalPlayer
+    local lastBlockTime = 0
+    local combatConnection = nil
+    local lastScanTime = 0
+    local visualizationParts = {}
+    local soundCache = {}
+    local animCache = {}
+    local lastSoundCheck = 0
+    local lastAnimCheck = 0
+    local lastPingCheck = 0
+    local currentPing = 0
+    local threatCache = {}
+    local lastThreatUpdate = 0
+    
+    local function GetPing()
+        local currentTime = os.clock()
+        if currentTime - lastPingCheck < 0.3 then
+            return currentPing
+        end
+        lastPingCheck = currentTime
+        
+        local stats = Stats and Stats.Network and Stats.Network:FindFirstChild("ServerStatsItem")
+        if stats then
+            local pingStat = stats:FindFirstChild("Data Ping")
+            if pingStat then
+                currentPing = pingStat.Value
+                return currentPing
+            end
+        end
+        
+        return 0
+    end
+    
+    local function GetPingCompensation()
+        local ping = GetPing()
+        return math.min(0.4, ping / 1000 * Guest1337AutoBlockConfigV1.PingCompensation * 12)
+    end
+    
+    local function CreateVisualization()
+        if not LocalPlayer.Character then return end
+        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+        
+        for _, part in ipairs(visualizationParts) do
+            part:Destroy()
+        end
+        visualizationParts = {}
+        
+        local center = rootPart.Position
+        local distance = Guest1337AutoBlockConfigV1.BaseDistance
+        local angle = math.rad(Guest1337AutoBlockConfigV1.TargetAngle)
+        local segments = 36
+        
+        -- 创建中心球体表示玩家位置
+        local centerSphere = Instance.new("Part")
+        centerSphere.Size = Vector3.new(1, 1, 1)
+        centerSphere.Position = center + Vector3.new(0, 0.5, 0)
+        centerSphere.Shape = Enum.PartType.Ball
+        centerSphere.BrickColor = BrickColor.new("Bright blue")
+        centerSphere.Material = Enum.Material.Neon
+        centerSphere.Transparency = 0.3
+        centerSphere.Anchored = true
+        centerSphere.CanCollide = false
+        centerSphere.Parent = workspace
+        table.insert(visualizationParts, centerSphere)
+        
+        -- 创建扇形区域表示格挡范围
+        for i = 1, segments do
+            local part = Instance.new("Part")
+            part.Size = Vector3.new(0.3, 0.1, 0.3)
+            part.BrickColor = BrickColor.new("Bright green")
+            part.Material = Enum.Material.Neon
+            part.Transparency = 0.7
+            part.Anchored = true
+            part.CanCollide = false
+            part.Parent = workspace
+            table.insert(visualizationParts, part)
+        end
+        
+        local function UpdateVisualization()
+            if not Guest1337AutoBlockConfigV1.ShowVisualization then return end
+            if not LocalPlayer.Character then return end
+            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            local center = root.Position + Vector3.new(0, 0.5, 0)
+            local lookVector = root.CFrame.LookVector
+            local distance = Guest1337AutoBlockConfigV1.BaseDistance
+            local angle = math.rad(Guest1337AutoBlockConfigV1.TargetAngle)
+            
+            -- 更新中心球体位置
+            centerSphere.Position = center
+            
+            -- 更新扇形区域
+            for i = 1, #visualizationParts - 1 do
+                local part = visualizationParts[i + 1]
+                local segmentAngle = (i - 1) * (2 * angle) / (#visualizationParts - 2) - angle
+                local rotCFrame = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), segmentAngle)
+                local dir = rotCFrame:VectorToWorldSpace(lookVector)
+                local pos = center + dir * distance
+                part.Position = pos
+                
+                -- 设置扇形区域的朝向
+                local lookAtCenter = CFrame.lookAt(pos, center)
+                part.CFrame = lookAtCenter
+            end
+        end
+        
+        local visConnection
+        visConnection = RunService.Heartbeat:Connect(function()
+            if not Guest1337AutoBlockConfigV1.ShowVisualization then
+                for _, part in ipairs(visualizationParts) do
+                    part:Destroy()
+                end
+                visualizationParts = {}
+                visConnection:Disconnect()
+                return
+            end
+            pcall(UpdateVisualization)
+        end)
+    end
+    
+    local function HasTargetSound(character)
+        if not character then return false end
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return false end
+        
+        local currentTime = os.clock()
+        if currentTime - lastSoundCheck < 0.0003 then
+            return soundCache[character] or false
+        end
+        lastSoundCheck = currentTime
+        
+        local found = false
+        for _, child in ipairs(rootPart:GetChildren()) do
+            if child:IsA("Sound") then
+                local soundId = tostring(child.SoundId)
+                local numericId = string.match(soundId, "(%d+)$")
+                if numericId and soundLookup[numericId] then
+                    found = true
+                    break
+                end
+            end
+        end
+        
+        soundCache[character] = found
+        return found
+    end
+    
+    local function HasTargetAnimation(character)
+        if not character then return false end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return false end
+        
+        local currentTime = os.clock()
+        if currentTime - lastAnimCheck < 0.0003 then
+            return animCache[character] or false
+        end
+        lastAnimCheck = currentTime
+        
+        local found = false
+        local animator = humanoid:FindFirstChildOfClass("Animator")
+        if animator then
+            for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+                if track.Animation then
+                    local animId = tostring(track.Animation.AnimationId)
+                    local numericId = string.match(animId, "(%d+)$")
+                    if numericId and animLookup[numericId] then
+                        found = true
+                        break
+                    end
+                end
+            end
+        end
+        
+        animCache[character] = found
+        return found
+    end
+    
+    local function GetMoveCompensation()
+        if not LocalPlayer.Character then return 0 end
+        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return 0 end
+        
+        local velocity = rootPart.Velocity
+        local speed = math.sqrt(velocity.X^2 + velocity.Y^2 + velocity.Z^2)
+        return Guest1337AutoBlockConfigV1.MoveCompBase + (speed * Guest1337AutoBlockConfigV1.MoveCompFactor)
+    end
+    
+    local function IsFastKiller(killer)
+        if not killer then return false end
+        local killerRoot = killer:FindFirstChild("HumanoidRootPart")
+        if not killerRoot then return false end
+        
+        local killerVel = killerRoot.Velocity
+        local killerSpeed = math.sqrt(killerVel.X^2 + killerVel.Y^2 + killerVel.Z^2)
+        return killerSpeed > Guest1337AutoBlockConfigV1.MinAttackSpeed
+    end
+    
+    local function GetTotalDetectionRange(killer)
+        local base = Guest1337AutoBlockConfigV1.BaseDistance
+        local moveBonus = GetMoveCompensation()
+        local predict = 0
+        local pingBonus = GetPingCompensation() * 8
+        local reactionBoost = Guest1337AutoBlockConfigV1.ReactionBoost
 
+        if Guest1337AutoBlockConfigV1.EnablePrediction and killer and killer:FindFirstChild("HumanoidRootPart") then
+            local killerVel = killer.HumanoidRootPart.Velocity
+            local killerSpeed = math.sqrt(killerVel.X^2 + killerVel.Y^2 + killerVel.Z^2)
+            
+            if killerSpeed > Guest1337AutoBlockConfigV1.SpeedThreshold then
+                predict = math.min(
+                    Guest1337AutoBlockConfigV1.PredictMax, 
+                    Guest1337AutoBlockConfigV1.PredictBase + (killerSpeed * Guest1337AutoBlockConfigV1.PredictFactor)
+                )
+            end
+            
+            if IsFastKiller(killer) then
+                predict = predict * Guest1337AutoBlockConfigV1.FastKillerAdjust
+            end
+        end
+        
+        return (base + moveBonus + predict + pingBonus) * reactionBoost
+    end
+    
+    local function IsTargetingMe(killer)
+        local myCharacter = LocalPlayer.Character
+        if not myCharacter then return false end
+        
+        local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+        local killerRoot = killer and killer:FindFirstChild("HumanoidRootPart")
+        if not myRoot or not killerRoot then return false end
+        
+        local directionToMe = (myRoot.Position - killerRoot.Position).Unit
+        local killerLook = killerRoot.CFrame.LookVector
+        
+        local dot = directionToMe:Dot(killerLook)
+        local angle = math.deg(math.acos(math.clamp(dot, -1, 1)))
+        
+        return angle <= Guest1337AutoBlockConfigV1.TargetAngle
+    end
+    
+    local function IsKillerInRange(killer)
+        local myCharacter = LocalPlayer.Character
+        if not myCharacter then return false end
+        
+        local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+        local killerRoot = killer and killer:FindFirstChild("HumanoidRootPart")
+        if not myRoot or not killerRoot then return false end
+        
+        -- 计算杀手与玩家的实际距离
+        local distance = (myRoot.Position - killerRoot.Position).Magnitude
+        local detectionRange = GetTotalDetectionRange(killer)
+        
+        -- 只有当杀手在检测范围内时才返回true
+        return distance <= detectionRange
+    end
+    
+    local function UpdateThreatCache()
+        local currentTime = os.clock()
+        if currentTime - lastThreatUpdate < 0.1 then
+            return threatCache
+        end
+        lastThreatUpdate = currentTime
+        
+        threatCache = {}
+        local killersFolder = workspace:FindFirstChild("Killers") or (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers"))
+        if not killersFolder then return threatCache end
+        
+        local myCharacter = LocalPlayer.Character
+        if not myCharacter then return threatCache end
+        
+        local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+        if not myRoot then return threatCache end
+        
+        for _, killer in ipairs(killersFolder:GetChildren()) do
+            if killer:IsA("Model") and killer:FindFirstChild("HumanoidRootPart") then
+                local killerRoot = killer.HumanoidRootPart
+                
+                -- 首先检查杀手是否在范围内
+                if IsKillerInRange(killer) and IsTargetingMe(killer) then
+                    local hasSound = HasTargetSound(killer)
+                    local hasAnim = HasTargetAnimation(killer)
+                    
+                    if hasSound or hasAnim then
+                        local distance = (myRoot.Position - killerRoot.Position).Magnitude
+                        local detectionRange = GetTotalDetectionRange(killer)
+                        
+                        threatCache[killer] = {
+                            distance = distance,
+                            detectionRange = detectionRange,
+                            timestamp = currentTime,
+                            hasSound = hasSound,
+                            hasAnim = hasAnim
+                        }
+                    end
+                end
+            end
+        end
+        
+        return threatCache
+    end
+    
+    local function GetThreateningKillers()
+        local cache = UpdateThreatCache()
+        local killers = {}
+        local currentTime = os.clock()
+        
+        for killer, data in pairs(cache) do
+            if currentTime - data.timestamp < 0.2 then
+                table.insert(killers, killer)
+            end
+        end
+        
+        return killers
+    end
+    
+    local function GetAdjustedCooldown()
+        local ping = GetPing()
+        return math.max(0.04, Guest1337AutoBlockConfigV1.BlockCooldown - (ping / 1000 * 0.7))
+    end
+    
+    local function PerformBlock()
+        local now = os.clock()
+        if now - lastBlockTime >= GetAdjustedCooldown() then
+            pcall(function()
+                local args = {
+                    "UseActorAbility",
+                    {
+                        buffer.fromstring("\"Block\"")
+                    }
+                }
+                game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
+                lastBlockTime = now
+            end)
+        end
+    end
+    
+    local function CombatLoop()
+        local currentTime = os.clock()
+        if currentTime - lastScanTime >= Guest1337AutoBlockConfigV1.ScanInterval then
+            lastScanTime = currentTime
+            
+            if not LocalPlayer.Character then return end
+            local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not myRoot then return end
+            
+            local killers = GetThreateningKillers()
+            if #killers > 0 then
+                PerformBlock()
+            end
+        end
+    end
+    
+ZZ:AddToggle("AutoBlockV1", {
+        Text = "自动格挡",
+        Default = false,
+        Callback = function(enabled)
+            Guest1337AutoBlockConfigV1.Enabled = enabled
+            if enabled then
+                if combatConnection then
+                    combatConnection:Disconnect()
+                end
+                combatConnection = RunService.Stepped:Connect(function()
+                    pcall(CombatLoop)
+                end)
+            elseif combatConnection then
+                combatConnection:Disconnect()
+                combatConnection = nil
+            end
+        end
+    })
+    
+ZZ:AddSlider("Guest1337AutoBlockBaseDistanceV1", {
+        Text = "距离",
+        Default = 16,
+        Min = 5,
+        Max = 30,
+        Rounding = 1,
+        Callback = function(value)
+            Guest1337AutoBlockConfigV1.BaseDistance = value
+        end
+})
+    
+ZZ:AddSlider("Guest1337AutoBlockTargetAngleV1", {
+        Text = "角度",
+        Default = 70,
+        Min = 10,
+        Max = 180,
+        Rounding = 1,
+        Callback = function(value)
+            Guest1337AutoBlockConfigV1.TargetAngle = value
+        end
+})
+    
+ZZ:AddToggle("Guest1337AutoBlockVisualizationV1", {
+        Text = "格挡范围可视化",
+        Default = false,
+        Callback = function(enabled)
+            Guest1337AutoBlockConfigV1.ShowVisualization = enabled
+            if enabled then
+                CreateVisualization()
+            else
+                for _, part in ipairs(visualizationParts) do
+                    part:Destroy()
+                end
+                visualizationParts = {}
+            end
+        end
+})
 
+    LocalPlayer.CharacterAdded:Connect(function()
+        if Guest1337AutoBlockConfigV1.Enabled and combatConnection then
+            combatConnection:Disconnect()
+            combatConnection = RunService.Stepped:Connect(CombatLoop)
+        end
+        if Guest1337AutoBlockConfigV1.ShowVisualization then
+            CreateVisualization()
+        end
+    end)
+end)
 
-
-local SM = Tabs.Main:AddLeftGroupbox('TweTime背刺')
-
-
-
-
+local SM = Tabs.Main:AddLeftGroupbox('背刺[TweTime]')
 
 function hasNotification(text)
     for i, v in pairs(localPlayer.PlayerGui.Notis:GetChildren()) do
@@ -740,7 +1258,7 @@ local function backstabClose(model)
     end
 end
 
-SM:AddToggle("AutoDagger", {
+SM:AddToggle("TweTimeAutoDagger", {
     Text = "自动传送背刺",
     Default = false,
     Callback = function(cool)
@@ -757,7 +1275,7 @@ SM:AddToggle("AutoDagger", {
     end
 })
 
-SM:AddToggle("DaggerAura", {
+SM:AddToggle("TweTimeDaggerAura", {
     Text = "背刺光环",
     Default = false,
     Callback = function(cool)
@@ -775,7 +1293,7 @@ SM:AddToggle("DaggerAura", {
 })
 
 
-SM:AddSlider("BackstabRange", {
+SM:AddSlider("TweTimeBackstabRange", {
     Text = "背刺光环范围",
     Default = 20,
     Min = 7,
@@ -783,12 +1301,7 @@ SM:AddSlider("BackstabRange", {
     Rounding = 0
 })
 
-
-
-
-
-
-local ZZ = Tabs.Main:AddLeftGroupbox('<font color=\"rgb(255, 0, 0)\">飞行[最危险]</font>')
+local ZZ = Tabs.Main:AddLeftGroupbox('<b><font color=\"rgb(255, 0, 0)\">飞行[最危险]</font></b>')
 
 local RunService = game:GetService("RunService") --获取玩家操控位置函数
 local CFSpeed = 50
@@ -857,10 +1370,10 @@ local function StopCFly()
     end
 end
 
-ZZ:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[危险]</font></b> 此功能对于玩家资源丰富的来说是最危险的 建议别开")
+ZZ:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[危险]</font></b> 此功能对于玩家资源丰富的来说是最危险的")
 
 ZZ:AddToggle("CFlyToggle", {
-    Text = "<font color=\"rgb(255, 0, 0)\">飞行</font>",
+    Text = "<b><font color=\"rgb(255, 0, 0)\">飞行</font></b>",
     Default = false,
     Callback = function(Value)
         if Value then
@@ -881,12 +1394,6 @@ ZZ:AddSlider("CFlySpeed", {
         CFSpeed = Value
     end
 })
-
-
-
-
-
-
 
 local Game = Tabs.Main:AddLeftGroupbox('对局游戏')
 
@@ -1010,8 +1517,6 @@ Game:AddToggle("FakeFixGenerator", {
 })
 end
 
-
-
 do
 Game:AddToggle("FakeDieV2", {
     Text = "假死亡V2",
@@ -1072,17 +1577,6 @@ Game:AddToggle("FakeDieV2", {
     end
 end)
 end
-
-
-
-
-
-
-
-
-
-
-
 
 local AntiBan = Tabs.Main:AddRightGroupbox("绕过反作弊")
 
@@ -1319,8 +1813,8 @@ do
 
             if hooksApplied > 0 then
                 Library:Notify(string.format("LightStar-提示\n绕过反作弊已开启！(%d/%d hooks)", hooksApplied, totalHooks))
-                print("[AntiCheat] Anti-ban protection activated successfully")
-            else
+                print("[绕过反作弊] 绕过反作弊保护成功激活")
+            
                 Library:Notify("LightStar-警告\n部分hook应用失败")
             end
         end)
@@ -1331,7 +1825,7 @@ do
     local function stopAntiBanSafe()
         if not data.running then return end
         
-        print("[绕过反作弊] 停止防禁保...")
+        print("[绕过反作弊] 停止绕过反作弊...")
         data.running = false
         
         -- 停止保护线程
@@ -1397,9 +1891,6 @@ AntiBan:AddToggle("AntiBanAC", {
   
     print(string.format("[绕过反作弊] 初始化 - 运行: %s", tostring(data.running)))
 end
-
-
-
 
 do
     local Players = game:GetService("Players")
@@ -1555,17 +2046,6 @@ AntiBan:AddToggle("AntiBanV2", {
 })
 end
 
-
-
-
-
-
-
-
-
-
-
-
 local MainTabbox = Tabs.Main:AddRightTabbox()
 local Camera = MainTabbox:AddTab("相机")
 
@@ -1602,7 +2082,7 @@ Camera:AddToggle("SpectateKiller", {
 
 Camera:AddDivider()
 
-Camera:AddLabel("<b><font color=\"rgb(0, 0, 255)\">[注意]</font></b> 视野大厅启用 然后到对局生效")
+Camera:AddLabel("<b><font color=\"rgb(0, 0, 255)\">[注意]</font></b> 视野启用 然后重生就生效了")
 
 Camera:AddSlider("FieldOfViewValue",{
     Text = "视野调节",
@@ -1629,13 +2109,6 @@ Camera:AddToggle("EnableFieldOfView",{
         end)
     end
 })
-
-
-
-
-
-
-
 
 local Lighting = MainTabbox:AddTab("亮度")
 
@@ -1706,21 +2179,7 @@ Lighting:AddToggle("启用功能",{
     
 })
 
-
-
-
-
-
-
-
-
-
-
 local Teleport = Tabs.Main:AddRightGroupbox('传送')
-
-
-
-
 
 Teleport:AddButton("TeleportKliier", {
     Text = "传送杀手",
@@ -1753,38 +2212,6 @@ Teleport:AddButton("TeleportSurvivor", {
         end)
     end
 })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 local ZZ = Tabs.Main:AddRightGroupbox('物品')
 
@@ -2504,8 +2931,6 @@ SC:AddToggle('JasonAimbot', {
     Callback = jasonaimbot
 })
 
-
-
 local SpecialAimbot = Tabs.Aimbot:AddLeftGroupbox("角色自瞄(静默)")
 
 -- 默认距离设置
@@ -2688,7 +3113,6 @@ SpecialAimbot:AddToggle("Guest1337SilentAimbot",{
     end
 })
 
-
 local function chanceAimbot(state)
     local settings = {
         maxDistance = 50,
@@ -2756,25 +3180,7 @@ local function chanceAimbot(state)
     end
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 local ZZ = Tabs.Aimbot:AddLeftGroupbox('自瞄杀手')
-
 
 local aimSettings = {
     distance = 100,
@@ -2974,13 +3380,7 @@ ZZ:AddToggle("AimbotToggle", {
     end
 })
 
-
-
-
-
 local ZZ = Tabs.Aimbot:AddRightGroupbox('自瞄幸存者')
-
-
 
 local aimSettings = {
     distance = 100,
@@ -3177,13 +3577,6 @@ ZZ:AddToggle("AimbotToggle", {
         end
     end
 })
-
-
-
-
-
-
-
 
 local Visual = Tabs.Esp:AddRightGroupbox("高亮ESP")
 
@@ -3402,16 +3795,7 @@ Visual:AddSlider("OutlineTransparency", {
     end
 })
 
-
-
-
-
-
-
-
 local Visual = Tabs.Esp:AddRightGroupbox("假NoliESP")
-
-
 
 local NoliHighlight = {
     Enabled = false,
@@ -3801,9 +4185,6 @@ Visual:AddToggle("ShowDistance", {
     end
 })
 
-
-
-
 local Visual = Tabs.Esp:AddLeftGroupbox("血量条ESP")
 
 -- 血量条设置
@@ -4147,15 +4528,7 @@ Visual:AddSlider("BarOffsetY", {
     end
 })
 
-
-
-
-
-
-
-
 Visual = Tabs.Esp:AddLeftGroupbox("血量ESP[备用]")
-
 
 local camera = workspace.CurrentCamera
 local localPlayer = game:GetService("Players").LocalPlayer
@@ -4329,10 +4702,6 @@ Visual:AddToggle("KillerHealth", {
     Default = Color3.fromRGB(255, 255, 0),
     Title = "杀手血量(文字)颜色",
 })
-
-
-
-
 
 local Visual   = Tabs.Esp:AddLeftGroupbox('发动机ESP')
 -- 真发动机ESP
@@ -5039,19 +5408,9 @@ Visual:AddToggle("NoliWarningESP", {
     Title = "Noli传送发动机边缘颜色",
 })
 
-
-
-
-
-
-
-
-
-
 local Visual = Tabs.Esp:AddRightGroupbox("2D方框")
 
-
-Visual:AddToggle("SE", {
+Visual:AddToggle("2dEspSurvivorbox", {
     Text = "ESP幸存者方框",
     Default = false,
     Callback = function(v)
@@ -5125,7 +5484,7 @@ Visual:AddToggle("SE", {
     end
 })
 
-Visual:AddToggle("KE", {
+Visual:AddToggle("2dEspKillerbox", {
     Text = "ESP杀手方框",
     Default = false,
     Callback = function(v)
@@ -5198,8 +5557,6 @@ Visual:AddToggle("KE", {
         end
     end
 })
-
-
 
 local Visual = Tabs.Esp:AddRightGroupbox("3D方框ESP")
 
@@ -5635,7 +5992,6 @@ Visual:AddSlider("BoxHeightScale", {
     end
 })
 
-
 Visual:AddSlider("VerticalOffset", {
     Text = "垂直偏移",
     Min = -5,
@@ -5759,12 +6115,6 @@ Visual:AddSlider("FootOffset", {
         Box3DSettings.FootOffset = value
     end
 })
-
-
-
-
-
-
 
 local Visual = Tabs.Esp:AddLeftGroupbox("物品ESP")
 
@@ -5895,12 +6245,6 @@ end)
 end
 end
 })
-
-
-
-
-
-
 
 local Warning = Tabs.NotificationListen:AddLeftGroupbox("杀手靠近提示")
 
@@ -6051,32 +6395,7 @@ Warning:AddDropdown("WarningColor", {
     end
 })
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 local Visual = Tabs.NotificationListen:AddRightGroupbox("Noli监听")
-
-
 
 Visual:AddToggle("NoliTeleportAlert", {
     Text = "Noli传送提示",
@@ -6146,7 +6465,6 @@ Visual:AddToggle("NoliTeleportAlert", {
         end
     end
 })
-
 
 Visual:AddToggle("NoliTeleportCancel", {
     Text = "Noli传送取消提示",
@@ -6288,10 +6606,6 @@ Visual:AddToggle("NoliMotorSelect", {
     end
 })
 
-
-
-
-
 Visual:AddToggle("NoliMotorSelect", {
     Text = "Noli冲刺提示",
     Default = false,
@@ -6366,28 +6680,6 @@ Visual:AddToggle("NoliMotorSelect", {
         end
     end
 })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 local Visual = Tabs.NotificationListen:AddRightGroupbox('其他监听')
 
@@ -6534,1926 +6826,6 @@ Visual:AddToggle("NEK",{
             end
         end
 })
-
-local Player = Tabs.AnimationAction:AddLeftGroupbox("动作功能")
-
-
-Player:AddToggle("SillyBillyToggle", {
-    Text = "Silly Billy",
-    Default = false,
-    Tooltip = "播放Silly Billy表情动作",
-    Callback = function(state)
-        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-        local humanoid = char:WaitForChild("Humanoid")
-        local rootPart = char:WaitForChild("HumanoidRootPart")
-        
-        if state then
-            -- 激活状态
-            humanoid.PlatformStand = true
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = Instance.new("BodyVelocity")
-            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-            bodyVelocity.Velocity = Vector3.zero
-            bodyVelocity.Parent = rootPart
-            
-            local animation = Instance.new("Animation")
-            animation.AnimationId = "rbxassetid://107464355830477"
-            local animationTrack = humanoid:LoadAnimation(animation)
-            animationTrack:Play()
-            
-            local sound = Instance.new("Sound")
-            sound.SoundId = "rbxassetid://77601084987544"
-            sound.Parent = rootPart
-            sound.Volume = 0.5
-            sound.Looped = false
-            sound:Play()
-            
-            animationTrack.Stopped:Connect(function()
-                humanoid.PlatformStand = false
-                if bodyVelocity and bodyVelocity.Parent then
-                    bodyVelocity:Destroy()
-                end
-                
-                for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
-                    local asset = char:FindFirstChild(assetName)
-                    if asset then asset:Destroy() end
-                end
-            end)
-        else
-            -- 关闭状态
-            humanoid.PlatformStand = false
-            humanoid.JumpPower = 0
-            
-            for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
-                local asset = char:FindFirstChild(assetName)
-                if asset then asset:Destroy() end
-            end
-            
-            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
-            if bodyVelocity then bodyVelocity:Destroy() end
-            
-            local sound = rootPart:FindFirstChildOfClass("Sound")
-            if sound then
-                sound:Stop()
-                sound:Destroy()
-            end
-            
-            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-                if track.Animation.AnimationId == "rbxassetid://107464355830477" then
-                    track:Stop()
-                end
-            end
-        end
-    end
-})
-
--- Silly of it 动作按钮
-Player:AddToggle("SillyOfItToggle", {
-    Text = "Silly of it",
-    Default = false,
-    Tooltip = "播放Silly of it表情动作",
-    Callback = function(state)
-        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-        local humanoid = char:WaitForChild("Humanoid")
-        local rootPart = char:WaitForChild("HumanoidRootPart")
-        
-        if state then
-            -- 激活状态（完整实现，与原始函数相同）
-            humanoid.PlatformStand = true
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = Instance.new("BodyVelocity")
-            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-            bodyVelocity.Velocity = Vector3.zero
-            bodyVelocity.Parent = rootPart
-            
-            local animation = Instance.new("Animation")
-            animation.AnimationId = "rbxassetid://107464355830477"
-            local animationTrack = humanoid:LoadAnimation(animation)
-            animationTrack:Play()
-            
-            local sound = Instance.new("Sound")
-            sound.SoundId = "rbxassetid://120176009143091"
-            sound.Parent = rootPart
-            sound.Volume = 0.5
-            sound.Looped = false
-            sound:Play()
-            
-            animationTrack.Stopped:Connect(function()
-                humanoid.PlatformStand = false
-                if bodyVelocity and bodyVelocity.Parent then
-                    bodyVelocity:Destroy()
-                end
-                
-                for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
-                    local asset = char:FindFirstChild(assetName)
-                    if asset then asset:Destroy() end
-                end
-            end)
-        else
-            -- 关闭状态（完整实现）
-            humanoid.PlatformStand = false
-            humanoid.JumpPower = 0
-            
-            for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
-                local asset = char:FindFirstChild(assetName)
-                if asset then asset:Destroy() end
-            end
-            
-            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
-            if bodyVelocity then bodyVelocity:Destroy() end
-            
-            local sound = rootPart:FindFirstChildOfClass("Sound")
-            if sound then
-                sound:Stop()
-                sound:Destroy()
-            end
-            
-            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-                if track.Animation.AnimationId == "rbxassetid://107464355830477" then
-                    track:Stop()
-                end
-            end
-        end
-    end
-})
-
--- Subterfuge 动作按钮
-Player:AddToggle("SubterfugeToggle", {
-    Text = "Subterfuge",
-    Default = false,
-    Tooltip = "播放Subterfuge表情动作",
-    Callback = function(state)
-        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-        local humanoid = char:WaitForChild("Humanoid")
-        local rootPart = char:WaitForChild("HumanoidRootPart")
-        
-        if state then
-            -- 激活状态（完整实现）
-            humanoid.PlatformStand = true
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = Instance.new("BodyVelocity")
-            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-            bodyVelocity.Velocity = Vector3.zero
-            bodyVelocity.Parent = rootPart
-            
-            local animation = Instance.new("Animation")
-            animation.AnimationId = "rbxassetid://87482480949358"
-            local animationTrack = humanoid:LoadAnimation(animation)
-            animationTrack:Play()
-            
-            local sound = Instance.new("Sound")
-            sound.SoundId = "rbxassetid://132297506693854"
-            sound.Parent = rootPart
-            sound.Volume = 2
-            sound.Looped = false
-            sound:Play()
-            
-            local args = {
-                [1] = "PlayEmote",
-                [2] = "Animations",
-                [3] = "_Subterfuge"
-            }
-            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
-            
-            animationTrack.Stopped:Connect(function()
-                humanoid.PlatformStand = false
-                if bodyVelocity and bodyVelocity.Parent then
-                    bodyVelocity:Destroy()
-                end
-            end)
-        else
-            -- 关闭状态（完整实现）
-            humanoid.PlatformStand = false
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
-            if bodyVelocity then bodyVelocity:Destroy() end
-            
-            local sound = rootPart:FindFirstChildOfClass("Sound")
-            if sound then
-                sound:Stop()
-                sound:Destroy()
-            end
-            
-            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-                if track.Animation.AnimationId == "rbxassetid://87482480949358" then
-                    track:Stop()
-                end
-            end
-        end
-    end
-})
-
--- Aw Shucks 动作按钮
-Player:AddToggle("AwShucksToggle", {
-    Text = "Aw Shucks",
-    Default = false,
-    Tooltip = "播放Aw Shucks表情动作",
-    Callback = function(state)
-        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-        local humanoid = char:WaitForChild("Humanoid")
-        local rootPart = char:WaitForChild("HumanoidRootPart")
-        
-        if state then
-            -- 激活状态（完整实现）
-            humanoid.PlatformStand = true
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = Instance.new("BodyVelocity")
-            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-            bodyVelocity.Velocity = Vector3.zero
-            bodyVelocity.Parent = rootPart
-            
-            local animation = Instance.new("Animation")
-            animation.AnimationId = "rbxassetid://74238051754912"
-            local animationTrack = humanoid:LoadAnimation(animation)
-            animationTrack:Play()
-            
-            local sound = Instance.new("Sound")
-            sound.SoundId = "rbxassetid://123236721947419"
-            sound.Parent = rootPart
-            sound.Volume = 0.5
-            sound.Looped = false
-            sound:Play()
-            
-            local args = {
-                [1] = "PlayEmote",
-                [2] = "Animations",
-                [3] = "Shucks"
-            }
-            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
-            
-            animationTrack.Stopped:Connect(function()
-                humanoid.PlatformStand = false
-                if bodyVelocity and bodyVelocity.Parent then
-                    bodyVelocity:Destroy()
-                end
-            end)
-        else
-            -- 关闭状态（完整实现）
-            humanoid.PlatformStand = false
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
-            if bodyVelocity then bodyVelocity:Destroy() end
-            
-            local sound = rootPart:FindFirstChildOfClass("Sound")
-            if sound then
-                sound:Stop()
-                sound:Destroy()
-            end
-            
-            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-                if track.Animation.AnimationId == "rbxassetid://74238051754912" then
-                    track:Stop()
-                end
-            end
-        end
-    end
-})
-
--- Miss The Quiet 动作按钮
-Player:AddToggle("MissTheQuietToggle", {
-    Text = "Miss The Quiet",
-    Default = false,
-    Tooltip = "播放Miss The Quiet表情动作",
-    Callback = function(state)
-        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-        local humanoid = char:WaitForChild("Humanoid")
-        local rootPart = char:WaitForChild("HumanoidRootPart")
-        
-        if state then
-            -- 激活状态（完整实现）
-            humanoid.PlatformStand = true
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = Instance.new("BodyVelocity")
-            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-            bodyVelocity.Velocity = Vector3.zero
-            bodyVelocity.Parent = rootPart
-            
-            local animation = Instance.new("Animation")
-            animation.AnimationId = "rbxassetid://100986631322204"
-            local animationTrack = humanoid:LoadAnimation(animation)
-            animationTrack:Play()
-            
-            local sound = Instance.new("Sound")
-            sound.SoundId = "rbxassetid://131936418953291"
-            sound.Parent = rootPart
-            sound.Volume = 0.5
-            sound.Looped = false
-            sound:Play()
-            
-            animationTrack.Stopped:Connect(function()
-                humanoid.PlatformStand = false
-                if bodyVelocity and bodyVelocity.Parent then
-                    bodyVelocity:Destroy()
-                end
-                
-                for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
-                    local asset = char:FindFirstChild(assetName)
-                    if asset then asset:Destroy() end
-                end
-            end)
-        else
-            -- 关闭状态（完整实现）
-            humanoid.PlatformStand = false
-            humanoid.JumpPower = 0
-            
-            for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
-                local asset = char:FindFirstChild(assetName)
-                if asset then asset:Destroy() end
-            end
-            
-            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
-            if bodyVelocity then bodyVelocity:Destroy() end
-            
-            local sound = rootPart:FindFirstChildOfClass("Sound")
-            if sound then
-                sound:Stop()
-                sound:Destroy()
-            end
-            
-            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-                if track.Animation.AnimationId == "rbxassetid://100986631322204" then
-                    track:Stop()
-                end
-            end
-        end
-    end
-})
-
-
-
-local Player = Tabs.AnimationAction:AddRightGroupbox('VIP舞蹈')
-
-
-
-
-Player:AddToggle("VIPToggleNew", {
-    Text = "VIP (新音频)",
-    Default = false,
-    Tooltip = "播放VIP表情动作（新版音频）",
-    Callback = function(state)
-        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-        local humanoid = char:WaitForChild("Humanoid")
-        local rootPart = char:WaitForChild("HumanoidRootPart")
-        
-        if state then
-            -- 激活状态（完整实现）
-            humanoid.PlatformStand = true
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = Instance.new("BodyVelocity")
-            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-            bodyVelocity.Velocity = Vector3.zero
-            bodyVelocity.Parent = rootPart
-            
-            local animation = Instance.new("Animation")
-            animation.AnimationId = "rbxassetid://138019937280193"
-            local animationTrack = humanoid:LoadAnimation(animation)
-            animationTrack:Play()
-            
-            local sound = Instance.new("Sound")
-            sound.SoundId = "rbxassetid://109474987384441"
-            sound.Parent = rootPart
-            sound.Volume = 0.5
-            sound.Looped = true
-            sound:Play()
-            
-            local effect = game:GetService("ReplicatedStorage").Assets.Emotes.HakariDance.HakariBeamEffect:Clone()
-            effect.Name = "PlayerEmoteVFX"
-            effect.CFrame = char.PrimaryPart.CFrame * CFrame.new(0, -1, -0.3)
-            effect.WeldConstraint.Part0 = char.PrimaryPart
-            effect.WeldConstraint.Part1 = effect
-            effect.Parent = char
-            effect.CanCollide = false
-            
-            local args = {
-                [1] = "PlayEmote",
-                [2] = "Animations",
-                [3] = "HakariDance"
-            }
-            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
-            
-            animationTrack.Stopped:Connect(function()
-                humanoid.PlatformStand = false
-                if bodyVelocity and bodyVelocity.Parent then
-                    bodyVelocity:Destroy()
-                end
-            end)
-        else
-            -- 关闭状态（完整实现）
-            humanoid.PlatformStand = false
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
-            if bodyVelocity then bodyVelocity:Destroy() end
-            
-            local sound = rootPart:FindFirstChildOfClass("Sound")
-            if sound then
-                sound:Stop()
-                sound:Destroy()
-            end
-            
-            local effect = char:FindFirstChild("PlayerEmoteVFX")
-            if effect then effect:Destroy() end
-            
-            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-                if track.Animation.AnimationId == "rbxassetid://138019937280193" then
-                    track:Stop()
-                end
-            end
-        end
-    end
-})
-
--- VIP动作（旧音频）按钮
-Player:AddToggle("VIPToggleOld", {
-    Text = "VIP (旧音频)",
-    Default = false,
-    Tooltip = "播放VIP表情动作（旧版音频）",
-    Callback = function(state)
-        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-        local humanoid = char:WaitForChild("Humanoid")
-        local rootPart = char:WaitForChild("HumanoidRootPart")
-        
-        if state then
-            -- 激活状态（完整实现）
-            humanoid.PlatformStand = true
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = Instance.new("BodyVelocity")
-            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-            bodyVelocity.Velocity = Vector3.zero
-            bodyVelocity.Parent = rootPart
-            
-            local animation = Instance.new("Animation")
-            animation.AnimationId = "rbxassetid://138019937280193"
-            local animationTrack = humanoid:LoadAnimation(animation)
-            animationTrack:Play()
-            
-            local sound = Instance.new("Sound")
-            sound.SoundId = "rbxassetid://87166578676888"
-            sound.Parent = rootPart
-            sound.Volume = 0.5
-            sound.Looped = true
-            sound:Play()
-            
-            local effect = game:GetService("ReplicatedStorage").Assets.Emotes.HakariDance.HakariBeamEffect:Clone()
-            effect.Name = "PlayerEmoteVFX"
-            effect.CFrame = char.PrimaryPart.CFrame * CFrame.new(0, -1, -0.3)
-            effect.WeldConstraint.Part0 = char.PrimaryPart
-            effect.WeldConstraint.Part1 = effect
-            effect.Parent = char
-            effect.CanCollide = false
-            
-            local args = {
-                [1] = "PlayEmote",
-                [2] = "Animations",
-                [3] = "HakariDance"
-            }
-            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
-            
-            animationTrack.Stopped:Connect(function()
-                humanoid.PlatformStand = false
-                if bodyVelocity and bodyVelocity.Parent then
-                    bodyVelocity:Destroy()
-                end
-            end)
-        else
-            -- 关闭状态（完整实现）
-            humanoid.PlatformStand = false
-            humanoid.JumpPower = 0
-            
-            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
-            if bodyVelocity then bodyVelocity:Destroy() end
-            
-            local sound = rootPart:FindFirstChildOfClass("Sound")
-            if sound then
-                sound:Stop()
-                sound:Destroy()
-            end
-            
-            local effect = char:FindFirstChild("PlayerEmoteVFX")
-            if effect then effect:Destroy() end
-            
-            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-                if track.Animation.AnimationId == "rbxassetid://138019937280193" then
-                    track:Stop()
-                end
-            end
-        end
-    end
-})
-
-
-
-
-
-
-local Disabled = Tabs.BanEffect:AddLeftGroupbox("约翰 多反效果")
-
--- Helper function to safely destroy objects
-local function safeDestroy(obj)
-    if obj and obj.Parent then
-        obj:Destroy()
-    end
-end
-
--- Helper function to remove touch interests
-local function removeTouchInterests(object)
-    for _, child in ipairs(object:GetDescendants()) do
-        if child:IsA("TouchTransmitter") or child.Name == "TouchInterest" then
-            safeDestroy(child)
-        end
-    end
-end
-
-Disabled:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[注意]</font></b> 开启下面 功能 会造成卡顿")
-
--- Anti John Doe Trail
-Disabled:AddToggle("AJDT", {
-    Text = "反约翰 多乱码路径", 
-    Default = false,
-    Callback = function(v)
-        if DisabledJohnDoeTrail then
-            DisabledJohnDoeTrail:Disconnect()
-            DisabledJohnDoeTrail = nil
-        end
-
-        if v then
-            local function RemoveTouchInterests()
-                local playersFolder = workspace:FindFirstChild("Players")
-                if not playersFolder then return end
-                
-                local killers = playersFolder:FindFirstChild("Killers")
-                if not killers then return end
-
-                for _, killer in ipairs(killers:GetChildren()) do
-                    if killer:FindFirstChild("JohnDoeTrail") then
-                        for _, trail in ipairs(killer.JohnDoeTrail:GetDescendants()) do
-                            if trail.Name == "Trail" then
-                                removeTouchInterests(trail)
-                            end
-                        end
-                    end
-                end
-            end
-
-            RemoveTouchInterests()
-
-            DisabledJohnDoeTrail = game:GetService("RunService").Heartbeat:Connect(function()
-                RemoveTouchInterests()
-            end)
-
-            -- Setup descendant added listeners
-            local killers = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-            if killers then
-                for _, killer in ipairs(killers:GetChildren()) do
-                    if killer:FindFirstChild("JohnDoeTrail") then
-                        killer.JohnDoeTrail.DescendantAdded:Connect(function(newObj)
-                            if newObj.Name == "Trail" then
-                                removeTouchInterests(newObj)
-                            end
-                        end)
-                    end
-                end
-            end
-        end
-    end
-})
-
--- Anti John Doe Spikes
-Disabled:AddToggle("AJDSp", {
-    Text = "反约翰 多尖刺",
-    Default = false,
-    Callback = function(v)
-        if AntiJohnDoeSpike then
-            AntiJohnDoeSpike:Disconnect()
-            AntiJohnDoeSpike = nil
-        end
-
-        if v then
-            local function RemoveSpikes()
-                local map = workspace:FindFirstChild("Map")
-                if not map then return end
-                
-                for _, spike in ipairs(map:GetDescendants()) do
-                    if spike.Name == "Spike" then
-                        safeDestroy(spike)
-                    end
-                end
-            end
-
-            RemoveSpikes()
-
-            AntiJohnDoeSpike = game:GetService("RunService").Heartbeat:Connect(RemoveSpikes)
-
-            local map = workspace:FindFirstChild("Map")
-            if map then
-                map.DescendantAdded:Connect(function(obj)
-                    if obj.Name == "Spike" then
-                        safeDestroy(obj)
-                    end
-                end)
-            end
-        end
-    end
-})
-
--- Anti John Doe Stomp
-Disabled:AddToggle("AJDS", {
-    Text = "反约翰 多陷阱",
-    Default = false,
-    Callback = function(v)
-        if AntiJohnDoeStomp then
-            AntiJohnDoeStomp:Disconnect()
-            AntiJohnDoeStomp = nil
-        end
-
-        if v then
-            local function CleanShadows()
-                local map = workspace:FindFirstChild("Map")
-                if not map then return end
-                
-                local ingame = map:FindFirstChild("Ingame")
-                if not ingame then return end
-                
-                for _, shadow in ipairs(ingame:GetDescendants()) do
-                    if shadow.Name == "Shadow" then
-                        removeTouchInterests(shadow)
-                        safeDestroy(shadow)
-                    end
-                end
-            end
-
-            CleanShadows()
-
-            AntiJohnDoeStomp = game:GetService("RunService").Heartbeat:Connect(function()
-                CleanShadows()
-            end)
-
-            local map = workspace:FindFirstChild("Map")
-            if map then
-                local ingame = map:FindFirstChild("Ingame")
-                if ingame then
-                    ingame.DescendantAdded:Connect(function(obj)
-                        if obj.Name == "Shadow" then
-                            removeTouchInterests(obj)
-                            safeDestroy(obj)
-                        end
-                    end)
-                end
-            end
-        end
-    end
-})
-
-
-
-
-
-
-
-
-
-
-
-
-local ZZ = Tabs.BanEffect:AddLeftGroupbox('Noli反效果')
-
-
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-
-
-local noliDeleterActive = false
-local deletionConnection = nil
-local allowedNoli = nil
-
-
-local function deleteNewNoli()
-    local killersFolder = workspace:WaitForChild("Players")
-    local killers = killersFolder:WaitForChild("Killers")
-    
-    allowedNoli = killers:FindFirstChild("Noli")
-    if not allowedNoli then
-        return
-    end
-    
-    if deletionConnection then
-        deletionConnection:Disconnect()
-        deletionConnection = nil
-    end
-    
-    deletionConnection = RunService.Heartbeat:Connect(function()
-        allowedNoli = killers:FindFirstChild("Noli")
-        
-        if not allowedNoli then
-            if deletionConnection then
-                deletionConnection:Disconnect()
-                deletionConnection = nil
-            end
-            return
-        end
-        
-        for _, child in killers:GetChildren() do
-            if child.Name == "Noli" and child ~= allowedNoli then
-                child:Destroy()
-            end
-        end
-    end)
-end
-
-ZZ:AddToggle("AntiFakeNoliDeleter", {
-    Text = "反假Noli",
-    Default = false,
-    Tooltip = "如果你的杀手角色是Noli 杀手快到你的时候 你必须关闭此功能",
-    Callback = function(enabled)
-        noliDeleterActive = enabled
-        
-        if enabled then
-            if deletionConnection then
-                deletionConnection:Disconnect()
-                deletionConnection = nil
-            end
-            
-            local success, err = pcall(function()
-                deleteNewNoli()
-            end)
-            
-            if not success then
-                noliDeleterActive = false
-            end
-        else
-            if deletionConnection then
-                deletionConnection:Disconnect()
-                deletionConnection = nil
-            end
-            allowedNoli = nil
-        end
-    end
-})
-
-ZZ:AddToggle('NoliVoidRushNoclip', {
-    Text = "VoidRush穿墙"
-})
-
-task.spawn(function()
-    function isNoliVoidRush()
-        return isKiller and localPlayer.Character and localPlayer.Character.Name == "Noli" and "Dashing" == localPlayer.Character:GetAttribute("VoidRushState")
-    end
-    while true do
-        if isNoliVoidRush() and Toggles.NoliVoidRushNoclip.Value and (not Toggles.EnableNoclip.Value) then
-            enableNoclip()
-        elseif (not isNoliVoidRush()) and (not Toggles.EnableNoclip.Value) then
-            disableNoclip()
-        end
-        task.wait()
-    end
-end)
-
-ZZ:AddToggle('NoliVoidRushCollision', {
-    Text = "VoidRush反碰撞"
-})
-
-pcall(function()
-    local old
-    old = hookmetamethod(game, "__namecall", function(self, ...)
-        local args = {...}
-        if type(args[1]) == "string" and string.find(args[1], localPlayer.Name) then
-            if string.find(args[1], "VoidRushCollision") then
-                if Toggles.NoliVoidRushCollision.Value then
-                    return
-                end
-            elseif string.find(args[1], "C00lkiddCollision") then
-                if Toggles.WalkspeedAntiCollision.Value then
-                    return
-                end
-            end
-        end
-        return old(self, ...)
-    end)
-end)
-
-
-
-
-
-
-
-
-
-
-local player = game:GetService("Players").LocalPlayer
-local isVoidRushCrashed = false
-local characterCheckLoop = nil
-
-local function manageVoidRushState(character)
-    while isVoidRushCrashed and character and character.Parent do
-        character:SetAttribute("VoidRushState", "Crashed")
-        task.wait(0.5)  
-    end
-end
-
-ZZ:AddToggle("VoidRushOverride", {
-    Text = "VoidRush无视碰撞",
-    Default = false,
-    Tooltip = "需要锁定视角",
-    Callback = function(enabled)
-        local RunService = game:GetService("RunService")
-        local Players = game:GetService("Players")
-        local LocalPlayer = Players.LocalPlayer
-        
-        local Character
-        local Humanoid
-        local HumanoidRootPart
-        local monitorTask
-        local overrideConnection
-        local characterAddedConnection
-        
-        local ORIGINAL_DASH_SPEED = 60
-        local DEFAULT_WALK_SPEED = 16
-        
-        local function setupCharacter()
-            if LocalPlayer.Character then
-                Character = LocalPlayer.Character
-                Humanoid = Character:WaitForChild("Humanoid")
-                HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-                Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
-                Humanoid.AutoRotate = true
-            end
-        end
-        
-        local function startOverride()
-            if overrideConnection then return end
-            
-            overrideConnection = RunService.RenderStepped:Connect(function()
-                if not Character or not Humanoid or not HumanoidRootPart then
-                    return
-                end
-                
-                Humanoid.WalkSpeed = ORIGINAL_DASH_SPEED
-                Humanoid.AutoRotate = false
-                
-                local direction = HumanoidRootPart.CFrame.LookVector
-                local horizontalDirection = Vector3.new(direction.X, 0, direction.Z).Unit
-                Humanoid:Move(horizontalDirection)
-            end)
-        end
-        
-        local function stopOverride()
-            if overrideConnection then
-                overrideConnection:Disconnect()
-                overrideConnection = nil
-            end
-            
-            if Humanoid then
-                Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
-                Humanoid.AutoRotate = true
-                Humanoid:Move(Vector3.new(0, 0, 0))
-            end
-        end
-        
-        local function monitorVoidRush()
-            while enabled and task.wait() do
-                if not Character or not Humanoid or not HumanoidRootPart then
-                    setupCharacter()
-                    if not Character then continue end
-                end
-                
-                local voidRushState = Character:GetAttribute("VoidRushState")
-                if voidRushState == "Dashing" then
-                    startOverride()
-                else
-                    stopOverride()
-                end
-            end
-            stopOverride()
-        end
-        
-        local function cleanup()
-            if monitorTask then
-                task.cancel(monitorTask)
-                monitorTask = nil
-            end
-            
-            if characterAddedConnection then
-                characterAddedConnection:Disconnect()
-                characterAddedConnection = nil
-            end
-            
-            stopOverride()
-            setupCharacter()
-        end
-        
-        if enabled then
-            cleanup()
-            setupCharacter()
-            monitorTask = task.spawn(monitorVoidRush)
-            
-            characterAddedConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
-                Character = newChar
-                Humanoid = Character:WaitForChild("Humanoid")
-                HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-                if not enabled then
-                    Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
-                    Humanoid.AutoRotate = true
-                end
-            end)
-        else
-            cleanup()
-        end
-    end
-})
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-local ZZ = Tabs.BanEffect:AddRightGroupbox('1x4反效果')
-
-
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-
-local LocalPlayer = Players.LocalPlayer
-local RemoteEvent = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
-
-local AutoPopup = {
-    Enabled = false,
-    Task = nil,
-    Connections = {},
-    Interval = 0.5
-}
-
-local function deletePopups()
-    if not LocalPlayer or not LocalPlayer:FindFirstChild("PlayerGui") then
-        return false
-    end
-    
-    local tempUI = LocalPlayer.PlayerGui:FindFirstChild("TemporaryUI")
-    if not tempUI then
-        return false
-    end
-    
-    local deleted = false
-    for _, popup in ipairs(tempUI:GetChildren()) do
-        if popup.Name == "1x1x1x1Popup" then
-            popup:Destroy()
-            deleted = true
-        end
-    end
-    return deleted
-end
-
-local function triggerEntangled()
-    local args = { [1] = "Entangled" }
-    pcall(function()
-        RemoteEvent:FireServer(unpack(args))
-    end)
-end
-
-local function setupPopupListener()
-    if not LocalPlayer or not LocalPlayer:FindFirstChild("PlayerGui") then return end
-    
-    local tempUI = LocalPlayer.PlayerGui:FindFirstChild("TemporaryUI")
-    if not tempUI then
-        tempUI = Instance.new("Folder")
-        tempUI.Name = "TemporaryUI"
-        tempUI.Parent = LocalPlayer.PlayerGui
-    end
-    
-    if AutoPopup.Connections.ChildAdded then
-        AutoPopup.Connections.ChildAdded:Disconnect()
-    end
-    
-    AutoPopup.Connections.ChildAdded = tempUI.ChildAdded:Connect(function(child)
-        if AutoPopup.Enabled and child.Name == "1x1x1x1Popup" then
-            task.defer(function()
-                child:Destroy()
-            end)
-        end
-    end)
-end
-
-local function runMainTask()
-    while AutoPopup.Enabled do
-        deletePopups()
-        triggerEntangled()
-        task.wait(AutoPopup.Interval) -- 使用设置的间隔时间
-    end
-end
-
-local function startAutoPopup()
-    if AutoPopup.Enabled then return end
-    
-    AutoPopup.Enabled = true
-    setupPopupListener()
-    
-    if AutoPopup.Task then
-        task.cancel(AutoPopup.Task)
-    end
-    AutoPopup.Task = task.spawn(runMainTask)
-end
-
-local function stopAutoPopup()
-    if not AutoPopup.Enabled then return end
-    
-    AutoPopup.Enabled = false
-    
-    if AutoPopup.Task then
-        task.cancel(AutoPopup.Task)
-        AutoPopup.Task = nil
-    end
-    
-    for _, connection in pairs(AutoPopup.Connections) do
-        connection:Disconnect()
-    end
-    AutoPopup.Connections = {}
-end
-
--- 添加间隔时间调整滑块
-ZZ:AddSlider('AutoPopupInterval', {
-    Text = '执行间隔(秒)',
-    Default = 0.5,
-    Min = 0.5,
-    Max = 2,
-    Rounding = 0,
-    Tooltip = '设置自动执行的间隔时间(1-5秒)',
-    Callback = function(value)
-        AutoPopup.Interval = value
-    end
-})
-
-ZZ:AddToggle('AutoPopupToggle', {
-    Text = '反1x4弹窗(反懒惰效果)',
-    Default = false,
-    Tooltip = '反弹窗和懒惰效果',
-    Callback = function(state)
-        if state then
-            startAutoPopup()
-        else
-            stopAutoPopup()
-        end
-    end
-})
-
-if LocalPlayer then
-    LocalPlayer:GetPropertyChangedSignal("Parent"):Connect(function()
-        if not LocalPlayer.Parent then
-            stopAutoPopup()
-        end
-    end)
-end
-
-
-
-ZZ:AddToggle("RemoveUnstableEye", {
-    Text = "反不稳定之眼不能移动", 
-    Default = false,
-    Callback = function(v)
-        if not _G.UnstableEyeCleanup then _G.UnstableEyeCleanup = {} end
-        local connections = _G.UnstableEyeCleanup
-
-        -- 先清理现有的连接
-        for _, conn in pairs(connections) do
-            if typeof(conn) == "RBXScriptConnection" then
-                conn:Disconnect()
-            end
-        end
-        _G.UnstableEyeCleanup = {}
-
-        -- 如果关闭按钮，直接返回
-        if not v then return end
-
-        local function CleanUnstableEyeEffects()
-            local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-            if not killersFolder then return end
-            
-            for _, killer in ipairs(killersFolder:GetDescendants()) do
-                if killer.Name == "UnstableEye" then
-                    killer:Destroy()
-                end
-            end
-        end
-
-        -- 初始清理
-        task.spawn(CleanUnstableEyeEffects)
-
-        -- 设置定期清理
-        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
-            task.wait(1.5)
-            CleanUnstableEyeEffects()
-        end)
-
-        -- 设置新对象添加时的监听
-        local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-        if killersFolder then
-            connections.descendantAdded = killersFolder.DescendantAdded:Connect(function(descendant)
-                if descendant.Name == "UnstableEye" then
-                    descendant:Destroy()
-                end
-            end)
-        end
-    end
-})
-
-ZZ:AddToggle("RemoveBlindness", {
-    Text = "反失明效果", 
-    Default = false,
-    Callback = function(v)
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        
-        -- 获取 Modules.StatusEffects 路径
-        local modulesFolder = ReplicatedStorage:FindFirstChild("Modules")
-        local statusEffects = modulesFolder and modulesFolder:FindFirstChild("StatusEffects")
-        
-        if v then
-            -- 确保路径存在
-            if not statusEffects then
-                warn("未找到 ReplicatedStorage.Modules.StatusEffects 路径")
-                return
-            end
-            
-            -- 查找并删除 Blindness 模块
-            local blindness = statusEffects:FindFirstChild("Blindness")
-            if blindness then
-                blindness:Destroy()
-                print("已删除 Blindness 模块")
-            else
-                print("未找到 Blindness 模块")
-            end
-            
-            -- 设置持续检查
-            if not _G.BlindnessCleanup then _G.BlindnessCleanup = {} end
-            local connections = _G.BlindnessCleanup
-            
-            -- 定期检查
-            connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
-                task.wait(1.5)
-                local blindness = statusEffects:FindFirstChild("Blindness")
-                if blindness then
-                    blindness:Destroy()
-                end
-            end)
-            
-            -- 监听新增模块
-            connections.descendantAdded = statusEffects.DescendantAdded:Connect(function(descendant)
-                if descendant.Name == "Blindness" then
-                    task.wait(0.1) -- 确保模块完全加载
-                    descendant:Destroy()
-                end
-            end)
-        else
-            -- 关闭时清理连接
-            if _G.BlindnessCleanup then
-                for _, conn in pairs(_G.BlindnessCleanup) do
-                    conn:Disconnect()
-                end
-                _G.BlindnessCleanup = {}
-            end
-        end
-    end
-})
-
-local ZZ = Tabs.BanEffect:AddRightGroupbox('其他反效果')
-
-ZZ:AddToggle("RemoveStunningKiller", {
-    Text = "反谢德出剑缓慢移速", 
-    Default = false,
-    Callback = function(v)
-        -- 初始化全局变量
-        if not _G.StunningKillerCleanup then _G.StunningKillerCleanup = {} end
-        local connections = _G.StunningKillerCleanup
-
-        -- 关闭时清理所有连接
-        for _, conn in pairs(connections) do
-            if typeof(conn) == "RBXScriptConnection" then
-                conn:Disconnect()
-            end
-        end
-        _G.StunningKillerCleanup = {}
-
-        -- 如果关闭按钮，直接返回
-        if not v then return end
-
-        local function CleanStunningKillers()
-            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-            if not survivorsFolder then return end
-            
-            local survivorList = survivorsFolder:GetChildren()
-            for i = 1, #survivorList, 5 do
-                task.spawn(function()
-                    for j = i, math.min(i + 4, #survivorList) do
-                        local survivor = survivorList[j]
-                        local stunningKiller = survivor:FindFirstChild("Killer")
-                        if stunningKiller then
-                            stunningKiller:Destroy()
-                        end
-                    end
-                end)
-            end
-        end
-
-        -- 初始清理
-        task.spawn(CleanStunningKillers)
-
-        -- 设置定期清理
-        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
-            task.wait(2)
-            CleanStunningKillers()
-        end)
-
-        -- 设置新对象添加时的监听
-        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-        if survivorsFolder then
-            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
-                if descendant.Name == "Killer" then
-                    descendant:Destroy()
-                end
-            end)
-        end
-    end
-})
-
-ZZ:AddToggle("NoobRemoveSlateskin", {
-    Text = "反菜鸟石板皮肤缓慢效果", 
-    Default = false,
-    Callback = function(v)
-        if SlateskinCleanupConnection then
-            SlateskinCleanupConnection:Disconnect()
-            SlateskinCleanupConnection = nil
-            table.clear(slateskinCache)
-        end
-
-        if v then
-            local function CleanSlateskins()
-                local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-                if not survivorsFolder then return end
-                
-                local survivorList = survivorsFolder:GetChildren()
-                for i = 1, #survivorList, 5 do
-                    task.spawn(function()
-                        for j = i, math.min(i + 4, #survivorList) do
-                            local survivor = survivorList[j]
-                            local slateskin = survivor:FindFirstChild("SlateskinStatus")
-                            if slateskin then
-                                slateskin:Destroy()
-                            end
-                        end
-                    end)
-                end
-            end
-
-            task.spawn(CleanSlateskins)
-
-            SlateskinCleanupConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                task.wait(2)
-                CleanSlateskins()
-            end)
-
-            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-            if survivorsFolder then
-                survivorsFolder.DescendantAdded:Connect(function(descendant)
-                    if descendant.Name == "SlateskinStatus" then
-                        descendant:Destroy()
-                    end
-                end)
-            end
-        end
-    end
-})
-
-ZZ:AddToggle("AntiSubspace", {
-    Text = "反塔夫模糊和颜色反转效果",
-    Default = false,
-    Callback = function()
-        task.spawn(function()
-            while Toggles.AntiSubspace.Value and task.wait() do
-                local subspace = {
-                    "SubspaceVFXBlur",
-                    "SubspaceVFXColorCorrection"
-                }
-
-                for i, v in pairs(subspace) do
-                    if game.Lighting:FindFirstChild(v) then
-                        game.Lighting[v]:Destroy()
-                    end
-                end
-            end
-        end)
-    end
-})
-
-
-
-
-local Disabled = Tabs.BanEffect:AddLeftGroupbox('访客1337反效果')
-
--- 1. 反访客冲刺没有击中都缓慢
-Disabled:AddToggle("RemoveSlowed", {
-    Text = "反冲刺没有击中都缓慢", 
-    Default = false,
-    Callback = function(v)
-        -- 修复点：使用局部变量保存连接
-        if not _G.SlowedCleanup then _G.SlowedCleanup = {} end
-        local connections = _G.SlowedCleanup
-
-        -- 关闭时断开所有连接
-        if not v then
-            for _, conn in pairs(connections) do
-                conn:Disconnect()
-            end
-            _G.SlowedCleanup = {}
-            return
-        end
-
-        -- 修复点：显式保存 DescendantAdded 事件
-        local function CleanSlowedStatuses()
-            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-            if not survivorsFolder then return end
-            
-            for _, survivor in ipairs(survivorsFolder:GetDescendants()) do
-                if survivor.Name == "SlowedStatus" then
-                    survivor:Destroy()
-                end
-            end
-        end
-
-        task.spawn(CleanSlowedStatuses)
-
-        -- 保存心跳连接
-        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
-            task.wait(1.5)
-            CleanSlowedStatuses()
-        end)
-
-        -- 保存新增监听
-        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-        if survivorsFolder then
-            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
-                if descendant.Name == "SlowedStatus" then
-                    descendant:Destroy()
-                end
-            end)
-        end
-    end
-})
-
--- 2. 反访客格挡时移速问题 (独立变量名)
-Disabled:AddToggle("RemoveBlockingSlow", {
-    Text = "反格挡时移速问题", 
-    Default = false,
-    Callback = function(v)
-        if not _G.BlockingCleanup then _G.BlockingCleanup = {} end
-        local connections = _G.BlockingCleanup
-
-        if not v then
-            for _, conn in pairs(connections) do
-                conn:Disconnect()
-            end
-            _G.BlockingCleanup = {}
-            return
-        end
-
-        local function CleanStatuses()
-            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-            if not survivorsFolder then return end
-            
-            for _, survivor in ipairs(survivorsFolder:GetDescendants()) do
-                if survivor.Name == "ResistanceStatus" or survivor.Name == "GuestBlocking" then
-                    survivor:Destroy()
-                end
-            end
-        end
-
-        task.spawn(CleanStatuses)
-
-        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
-            task.wait(1.5)
-            CleanStatuses()
-        end)
-
-        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-        if survivorsFolder then
-            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
-                if descendant.Name == "ResistanceStatus" or descendant.Name == "GuestBlocking" then
-                    descendant:Destroy()
-                end
-            end)
-        end
-    end
-})
-
--- 3. 反访客拳击时移速问题 (独立变量名)
-Disabled:AddToggle("RemovePunchSlow", {
-    Text = "反拳击时移速问题", 
-    Default = false,
-    Callback = function(v)
-        if not _G.PunchCleanup then _G.PunchCleanup = {} end
-        local connections = _G.PunchCleanup
-
-        if not v then
-            for _, conn in pairs(connections) do
-                conn:Disconnect()
-            end
-            _G.PunchCleanup = {}
-            return
-        end
-
-        local function CleanStatuses()
-            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-            if not survivorsFolder then return end
-            
-            for _, survivor in ipairs(survivorsFolder:GetDescendants()) do
-                if survivor.Name == "ResistanceStatus" or survivor.Name == "PunchAbility" then
-                    survivor:Destroy()
-                end
-            end
-        end
-
-        task.spawn(CleanStatuses)
-
-        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
-            task.wait(1.5)
-            CleanStatuses()
-        end)
-
-        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-        if survivorsFolder then
-            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
-                if descendant.Name == "ResistanceStatus" or descendant.Name == "PunchAbility" then
-                    descendant:Destroy()
-                end
-            end)
-        end
-    end
-})
-
-
-
--- 5. 反访客冲刺结束效果
-Disabled:AddToggle("RemoveChargeEnded", {
-    Text = "反冲刺结束效果", 
-    Default = false,
-    Callback = function(v)
-        if not _G.ChargeEndedCleanup then _G.ChargeEndedCleanup = {} end
-        local connections = _G.ChargeEndedCleanup
-
-        if not v then
-            for _, conn in pairs(connections) do
-                conn:Disconnect()
-            end
-            _G.ChargeEndedCleanup = {}
-            return
-        end
-
-        local function CleanChargeEndedEffects()
-            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-            if not survivorsFolder then return end
-            
-            for _, survivor in ipairs(survivorsFolder:GetDescendants()) do
-                if survivor.Name == "GuestChargeEnded" then
-                    survivor:Destroy()
-                end
-            end
-        end
-
-        task.spawn(CleanChargeEndedEffects)
-
-        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
-            task.wait(1.5)
-            CleanChargeEndedEffects()
-        end)
-
-        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-        if survivorsFolder then
-            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
-                if descendant.Name == "GuestChargeEnded" then
-                    descendant:Destroy()
-                end
-            end)
-        end
-    end
-})
-
-
-
-
-
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local MVP = Tabs.PhysicalStrength:AddLeftGroupbox("体力功能")
-
--- 体力系统设置
-local StaminaSettings = {
-    MaxStamina = 100,      -- 最大体力值
-    StaminaGain = 25,      -- 体力恢复速度
-    StaminaLoss = 10,      -- 体力消耗速度
-    SprintSpeed = 28,      -- 奔跑速度
-    InfiniteGain = 9999    -- 无限体力恢复速度
-}
-
--- 体力控制开关
-local SettingToggles = {
-    MaxStamina = true,
-    StaminaGain = true,
-    StaminaLoss = true,
-    SprintSpeed = true
-}
-
--- 获取游戏体力模块
-local SprintingModule = ReplicatedStorage:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
-local GetModule = function() return require(SprintingModule) end
-
--- 实时更新体力设置
-task.spawn(function()
-    while true do
-        local m = GetModule()
-        for key, value in pairs(StaminaSettings) do
-            if SettingToggles[key] then
-                m[key] = value
-            end
-        end
-        task.wait(0.5)
-    end
-end)
-
--- 无限体力功能
-local bai = {Spr = false}
-local connection
-
-MVP:AddToggle('InfiniteStamina', {
-    Text = '无限体力',
-    Default = false,
-    Callback = function(state)
-        bai.Spr = state
-        local Sprinting = GetModule()
-
-        if state then
-            Sprinting.StaminaLoss = 0
-            Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999
-
-            if connection then connection:Disconnect() end
-            connection = RunService.Heartbeat:Connect(function()
-                if not bai.Spr then return end
-                Sprinting.StaminaLoss = 0
-                Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999
-            end)
-        else
-            Sprinting.StaminaLoss = StaminaSettings.StaminaLoss or 10
-            Sprinting.StaminaGain = StaminaSettings.StaminaGain or 25
-
-            if connection then
-                connection:Disconnect()
-                connection = nil
-            end
-        end
-    end
-})
-
-MVP:AddToggle('MaxStaminaToggle', {
-    Text = '启用体力大小调节',
-    Default = true,
-    Callback = function(Value)
-        SettingToggles.MaxStamina = Value
-    end
-})
-
-
-MVP:AddToggle('StaminaGainToggle', {
-    Text = '启用体力恢复调节',
-    Default = true,
-    Callback = function(Value)
-        SettingToggles.StaminaGain = Value
-    end
-})
-
-MVP:AddToggle('StaminaLossToggle', {
-    Text = '启用体力消耗调节',
-    Default = true,
-    Callback = function(Value)
-        SettingToggles.StaminaLoss = Value
-    end
-})
-
-MVP:AddToggle('SprintSpeedToggle', {
-    Text = '启用奔跑速度调节',
-    Default = true,
-    Callback = function(Value)
-        SettingToggles.SprintSpeed = Value
-    end
-})
-
-
-
-
-
-
-
-local MVP = Tabs.PhysicalStrength:AddRightGroupbox("调试")
-
-
-
-MVP:AddSlider('InfStaminaGainSlider', {
-    Text = '无限体力恢复速度',
-    Default = 9999,
-    Min = 0,
-    Max = 50000,
-    Rounding = 0,
-    Callback = function(Value)
-        StaminaSettings.InfiniteGain = Value
-    end
-})
-
-
-MVP:AddSlider('MySlider1', {
-    Text = '体力大小',
-    Default = 100,
-    Min = 0,
-    Max = 99999,
-    Rounding = 0,
-    Callback = function(Value)
-        StaminaSettings.MaxStamina = Value
-    end
-})
-
-
-MVP:AddSlider('MySlider2', {
-    Text = '体力恢复',
-    Default = 25,
-    Min = 0,
-    Max = 250,
-    Rounding = 0,
-    Callback = function(Value)
-        StaminaSettings.StaminaGain = Value
-    end
-})
-
-
-MVP:AddSlider('MySlider3', {
-    Text = '体力消耗',
-    Default = 10,
-    Min = 0,
-    Max = 100,
-    Rounding = 0,
-    Callback = function(Value)
-        StaminaSettings.StaminaLoss = Value
-    end
-})
-
-
-MVP:AddSlider('MySlider4', {
-    Text = '奔跑速度',
-    Default = 28,
-    Min = 0,
-    Max = 200,
-    Rounding = 0,
-    Callback = function(Value)
-        StaminaSettings.SprintSpeed = Value
-    end
-})
-
-
-
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local PZ = Tabs.Pizza:AddLeftGroupbox("披萨")
-
-local pizzaConnection = nil
-local pizzaTPConnection = nil
-local pizzaAttractionActive = false
-local pizzaCache = {}
-local pizzaEffects = {}
-
-local function createPizzaEffect(pizza, effectName)
-    if not pizza:FindFirstChild(effectName) then
-        local effect = Instance.new("ParticleEmitter")
-        effect.Name = effectName
-        effect.Texture = "rbxassetid://242487987"
-        effect.LightEmission = 0.8
-        effect.Size = NumberSequence.new(0.5)
-        if effectName == "TeleportEffect" then
-            effect.Lifetime = NumberRange.new(0.5)
-        end
-        effect.Parent = pizza
-        pizzaEffects[pizza] = effect
-        return effect
-    end
-    return pizzaEffects[pizza]
-end
-
-local function cleanUpEffects()
-    for pizza, effect in pairs(pizzaEffects) do
-        if not pizza or not pizza.Parent then
-            effect:Destroy()
-            pizzaEffects[pizza] = nil
-        end
-    end
-end
-
-local function findClosestPizza(rootPart)
-    local pizzaFolder = workspace:FindFirstChild("Pizzas") or workspace.Map
-    if not pizzaFolder then return nil end
-    
-    local closestPizza, closestDistance = nil, math.huge
-    for _, pizza in ipairs(pizzaFolder:GetDescendants()) do
-        if pizza:IsA("BasePart") and pizza.Name == "Pizza" and not pizzaCache[pizza] then
-            local distance = (rootPart.Position - pizza.Position).Magnitude
-            if distance < closestDistance then
-                closestPizza = pizza
-                closestDistance = distance
-            end
-        end
-    end
-    return closestPizza
-end
-
-PZ:AddToggle("AEP", {
-    Text = "自动吃披萨(追踪传送)",
-    Default = false,
-    Tooltip = "当生命值低于设定值时自动吸引附近的披萨",
-    Callback = function(enabled)
-        _G.AutoEatPizza = enabled
-        
-        if pizzaConnection then
-            pizzaConnection:Disconnect()
-            pizzaConnection = nil
-        end
-        
-        if enabled then
-            pizzaConnection = RunService.Heartbeat:Connect(function()
-                local player = Players.LocalPlayer
-                local character = player.Character
-                if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then
-                    return
-                end
-                
-                local humanoid = character.Humanoid
-                local rootPart = character.HumanoidRootPart
-                
-                if _G.HealthEatPizza and humanoid.Health >= _G.HealthEatPizza then
-                    return
-                end
-                
-                local closestPizza = findClosestPizza(rootPart)
-                if closestPizza then
-                    closestPizza.CFrame = closestPizza.CFrame:Lerp(
-                        rootPart.CFrame * CFrame.new(0, 0, -2),
-                        0.5
-                    )
-                    createPizzaEffect(closestPizza, "AttractEffect")
-                end
-                cleanUpEffects()
-            end)
-        end
-    end
-})
-
-PZ:AddToggle("ATP", {
-    Text = "自动吃披萨(传送)",
-    Default = false,
-    Tooltip = "当生命值低于设定值时自动将最近的披萨传送到玩家",
-    Callback = function(enabled)
-        _G.AutoTeleportPizza = enabled
-        
-        if pizzaTPConnection then
-            pizzaTPConnection:Disconnect()
-            pizzaTPConnection = nil
-        end
-        
-        if enabled then
-            pizzaTPConnection = RunService.Heartbeat:Connect(function()
-                local player = Players.LocalPlayer
-                local character = player.Character
-                if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then
-                    return
-                end
-                
-                local humanoid = character.Humanoid
-                local rootPart = character.HumanoidRootPart
-                
-                if _G.HealthEatPizza and humanoid.Health >= _G.HealthEatPizza then
-                    return
-                end
-                
-                local closestPizza = findClosestPizza(rootPart)
-                if closestPizza then
-                    closestPizza.CFrame = rootPart.CFrame * CFrame.new(0, 0, -2)
-                    local effect = createPizzaEffect(closestPizza, "TeleportEffect")
-                    task.delay(1, function()
-                        if effect and effect.Parent then
-                            effect:Destroy()
-                            pizzaEffects[closestPizza] = nil
-                        end
-                    end)
-                end
-                cleanUpEffects()
-            end)
-        end
-    end
-})
-
-
-PZ:AddDivider()  
-
-PZ:AddSlider("HealthThreshold", {
-    Text = "生命值",
-    Default = 50,
-    Min = 10,
-    Max = 130,
-    Rounding = 0,
-    Tooltip = "当生命值低于设置生命值吃披萨",
-    
-    Callback = function(value)
-        _G.HealthEatPizza = value
-    end
-})
-
-
-
-
-
-
-PZ:AddDivider()  
-
-PZ:AddButton("InstantAttract", {
-    Text = "将披萨送到脚下",
-    Func = function()
-        local player = Players.LocalPlayer
-        local character = player.Character
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            local rootPart = character.HumanoidRootPart
-            for _, pizza in ipairs(workspace:GetDescendants()) do
-                if pizza:IsA("BasePart") and pizza.Name == "Pizza" then
-                    pizza.CFrame = rootPart.CFrame
-                    break
-                end
-            end
-        end
-    end
-})
-
-local Misc = Tabs.Pizza:AddRightGroupbox('自动吃披萨［2］')
-
-Misc:AddSlider("HealthEatPizza",{
-Text = "生命值",
-Min = 1,
-Default = 50,
-Max = 50,
-Rounding = 1,
-Compact = true,
-Callback = function(v)
-_G.HealthEatPizza = v
-end})
-Misc:AddSlider("DistanceEatPizza",{
-Text = "距离范围",
-Min = 10,
-Default = 10,
-Max = 50,
-Rounding = 1,
-Compact = true,
-Callback = function(v)
-_G.DistanceEatPizza = v
-end})
-
-_G.HealthEatPizza = 50
-_G.DistanceEatPizza = 10
-
-Misc:AddToggle("AlwaysEatPizza",{
-Text = "自动吃披萨",
-Default = false,
-Callback = function(v)
-_G.AlwaysEatPizza = v
-game:GetService("RunService").RenderStepped:Connect(function()
-if _G.AlwaysEatPizza and workspace.Map:FindFirstChild("Ingame"):FindFirstChild("Pizza") then
-if game.Players.LocalPlayer.Character.Humanoid.Health < _G.HealthEatPizza and (workspace.Map:FindFirstChild("Ingame"):FindFirstChild("Pizza").Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < _G.DistanceEatPizza then
-workspace.Map:FindFirstChild("Ingame"):FindFirstChild("Pizza").Position = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
-end
-end
-end)
-end})
-
-
 
 local SM = Tabs.FightingKilling:AddLeftGroupbox('杀戮功能[杀手]')
 
@@ -9398,39 +7770,6 @@ SM:AddToggle("HitboxSize", {
 
 local SM = Tabs.FightingKilling:AddRightGroupbox('暴力','angry')
 
-local function getASurvivor(dist)
-    local char = localPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    for _, s in ipairs(workspace.Players.Survivors:GetChildren()) do
-        local h = s:FindFirstChild("HumanoidRootPart")
-        if h then
-            local d = (hrp.Position - h.Position).Magnitude
-            if d < dist then
-                return s
-            end
-        end
-    end
-end
-
-function getClosestSurvivor()
-    local closest, dist = nil, math.huge
-    local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil, nil end
-    for _, s in pairs(workspace.Players.Survivors:GetChildren()) do
-        local hrp2 = s:FindFirstChild("HumanoidRootPart")
-        if hrp2 then
-            local d = (hrp.Position - hrp2.Position).Magnitude
-            if d < dist then
-                closest = s
-                dist = d
-            end
-        end
-    end
-    return closest, dist
-end
-
 SM:AddToggle("SlashAura", { 
     Text = "攻击光环",
     Default = false,
@@ -9466,15 +7805,6 @@ SM:AddSlider("SlashAuraRange", {
     Max = 11,
     Rounding = 0,
 })
-
-local function assist(target, dist)
-    if target and dist <= 25 then
-        local pos = localPlayer.Character.HumanoidRootPart.Position
-        local targetPos = target.HumanoidRootPart.Position
-
-        localPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(Vector3.new(pos.X, pos.Y, pos.Z), Vector3.new(targetPos.X, pos.Y, targetPos.Z))
-    end
-end
 
 SM:AddDivider()
 
@@ -9536,18 +7866,1849 @@ SM:AddSlider("KillAllmew", {
     Rounding = 0,
 })
 
+local Disabled = Tabs.BanEffect:AddLeftGroupbox("约翰 多反效果")
+
+-- Helper function to safely destroy objects
+local function safeDestroy(obj)
+    if obj and obj.Parent then
+        obj:Destroy()
+    end
+end
+
+-- Helper function to remove touch interests
+local function removeTouchInterests(object)
+    for _, child in ipairs(object:GetDescendants()) do
+        if child:IsA("TouchTransmitter") or child.Name == "TouchInterest" then
+            safeDestroy(child)
+        end
+    end
+end
+
+Disabled:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[注意]</font></b> 开启下面 功能 会造成卡顿")
+
+-- Anti John Doe Trail
+Disabled:AddToggle("AJDT", {
+    Text = "反约翰 多乱码路径", 
+    Default = false,
+    Callback = function(v)
+        if DisabledJohnDoeTrail then
+            DisabledJohnDoeTrail:Disconnect()
+            DisabledJohnDoeTrail = nil
+        end
+
+        if v then
+            local function RemoveTouchInterests()
+                local playersFolder = workspace:FindFirstChild("Players")
+                if not playersFolder then return end
+                
+                local killers = playersFolder:FindFirstChild("Killers")
+                if not killers then return end
+
+                for _, killer in ipairs(killers:GetChildren()) do
+                    if killer:FindFirstChild("JohnDoeTrail") then
+                        for _, trail in ipairs(killer.JohnDoeTrail:GetDescendants()) do
+                            if trail.Name == "Trail" then
+                                removeTouchInterests(trail)
+                            end
+                        end
+                    end
+                end
+            end
+
+            RemoveTouchInterests()
+
+            DisabledJohnDoeTrail = game:GetService("RunService").Heartbeat:Connect(function()
+                RemoveTouchInterests()
+            end)
+
+            -- Setup descendant added listeners
+            local killers = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+            if killers then
+                for _, killer in ipairs(killers:GetChildren()) do
+                    if killer:FindFirstChild("JohnDoeTrail") then
+                        killer.JohnDoeTrail.DescendantAdded:Connect(function(newObj)
+                            if newObj.Name == "Trail" then
+                                removeTouchInterests(newObj)
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- Anti John Doe Spikes
+Disabled:AddToggle("AJDSp", {
+    Text = "反约翰 多尖刺",
+    Default = false,
+    Callback = function(v)
+        if AntiJohnDoeSpike then
+            AntiJohnDoeSpike:Disconnect()
+            AntiJohnDoeSpike = nil
+        end
+
+        if v then
+            local function RemoveSpikes()
+                local map = workspace:FindFirstChild("Map")
+                if not map then return end
+                
+                for _, spike in ipairs(map:GetDescendants()) do
+                    if spike.Name == "Spike" then
+                        safeDestroy(spike)
+                    end
+                end
+            end
+
+            RemoveSpikes()
+
+            AntiJohnDoeSpike = game:GetService("RunService").Heartbeat:Connect(RemoveSpikes)
+
+            local map = workspace:FindFirstChild("Map")
+            if map then
+                map.DescendantAdded:Connect(function(obj)
+                    if obj.Name == "Spike" then
+                        safeDestroy(obj)
+                    end
+                end)
+            end
+        end
+    end
+})
+
+-- Anti John Doe Stomp
+Disabled:AddToggle("AJDS", {
+    Text = "反约翰 多陷阱",
+    Default = false,
+    Callback = function(v)
+        if AntiJohnDoeStomp then
+            AntiJohnDoeStomp:Disconnect()
+            AntiJohnDoeStomp = nil
+        end
+
+        if v then
+            local function CleanShadows()
+                local map = workspace:FindFirstChild("Map")
+                if not map then return end
+                
+                local ingame = map:FindFirstChild("Ingame")
+                if not ingame then return end
+                
+                for _, shadow in ipairs(ingame:GetDescendants()) do
+                    if shadow.Name == "Shadow" then
+                        removeTouchInterests(shadow)
+                        safeDestroy(shadow)
+                    end
+                end
+            end
+
+            CleanShadows()
+
+            AntiJohnDoeStomp = game:GetService("RunService").Heartbeat:Connect(function()
+                CleanShadows()
+            end)
+
+            local map = workspace:FindFirstChild("Map")
+            if map then
+                local ingame = map:FindFirstChild("Ingame")
+                if ingame then
+                    ingame.DescendantAdded:Connect(function(obj)
+                        if obj.Name == "Shadow" then
+                            removeTouchInterests(obj)
+                            safeDestroy(obj)
+                        end
+                    end)
+                end
+            end
+        end
+    end
+})
+
+local ZZ = Tabs.BanEffect:AddLeftGroupbox('Noli反效果')
 
 
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 
+local noliDeleterActive = false
+local deletionConnection = nil
+local allowedNoli = nil
 
 
+local function deleteNewNoli()
+    local killersFolder = workspace:WaitForChild("Players")
+    local killers = killersFolder:WaitForChild("Killers")
+    
+    allowedNoli = killers:FindFirstChild("Noli")
+    if not allowedNoli then
+        return
+    end
+    
+    if deletionConnection then
+        deletionConnection:Disconnect()
+        deletionConnection = nil
+    end
+    
+    deletionConnection = RunService.Heartbeat:Connect(function()
+        allowedNoli = killers:FindFirstChild("Noli")
+        
+        if not allowedNoli then
+            if deletionConnection then
+                deletionConnection:Disconnect()
+                deletionConnection = nil
+            end
+            return
+        end
+        
+        for _, child in killers:GetChildren() do
+            if child.Name == "Noli" and child ~= allowedNoli then
+                child:Destroy()
+            end
+        end
+    end)
+end
+
+ZZ:AddToggle("AntiFakeNoliDeleter", {
+    Text = "反假Noli",
+    Default = false,
+    Tooltip = "如果你的杀手角色是Noli 杀手快到你的时候 你必须关闭此功能",
+    Callback = function(enabled)
+        noliDeleterActive = enabled
+        
+        if enabled then
+            if deletionConnection then
+                deletionConnection:Disconnect()
+                deletionConnection = nil
+            end
+            
+            local success, err = pcall(function()
+                deleteNewNoli()
+            end)
+            
+            if not success then
+                noliDeleterActive = false
+            end
+        else
+            if deletionConnection then
+                deletionConnection:Disconnect()
+                deletionConnection = nil
+            end
+            allowedNoli = nil
+        end
+    end
+})
+
+ZZ:AddToggle('NoliVoidRushNoclip', {
+    Text = "VoidRush穿墙"
+})
+
+task.spawn(function()
+    function isNoliVoidRush()
+        return isKiller and localPlayer.Character and localPlayer.Character.Name == "Noli" and "Dashing" == localPlayer.Character:GetAttribute("VoidRushState")
+    end
+    while true do
+        if isNoliVoidRush() and Toggles.NoliVoidRushNoclip.Value and (not Toggles.EnableNoclip.Value) then
+            enableNoclip()
+        elseif (not isNoliVoidRush()) and (not Toggles.EnableNoclip.Value) then
+            disableNoclip()
+        end
+        task.wait()
+    end
+end)
+
+ZZ:AddToggle('NoliVoidRushCollision', {
+    Text = "VoidRush反碰撞"
+})
+
+pcall(function()
+    local old
+    old = hookmetamethod(game, "__namecall", function(self, ...)
+        local args = {...}
+        if type(args[1]) == "string" and string.find(args[1], localPlayer.Name) then
+            if string.find(args[1], "VoidRushCollision") then
+                if Toggles.NoliVoidRushCollision.Value then
+                    return
+                end
+            elseif string.find(args[1], "C00lkiddCollision") then
+                if Toggles.WalkspeedAntiCollision.Value then
+                    return
+                end
+            end
+        end
+        return old(self, ...)
+    end)
+end)
+
+local player = game:GetService("Players").LocalPlayer
+local isVoidRushCrashed = false
+local characterCheckLoop = nil
+
+local function manageVoidRushState(character)
+    while isVoidRushCrashed and character and character.Parent do
+        character:SetAttribute("VoidRushState", "Crashed")
+        task.wait(0.5)  
+    end
+end
+
+ZZ:AddToggle("VoidRushOverride", {
+    Text = "VoidRush无视碰撞",
+    Default = false,
+    Tooltip = "需要锁定视角",
+    Callback = function(enabled)
+        local RunService = game:GetService("RunService")
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        
+        local Character
+        local Humanoid
+        local HumanoidRootPart
+        local monitorTask
+        local overrideConnection
+        local characterAddedConnection
+        
+        local ORIGINAL_DASH_SPEED = 60
+        local DEFAULT_WALK_SPEED = 16
+        
+        local function setupCharacter()
+            if LocalPlayer.Character then
+                Character = LocalPlayer.Character
+                Humanoid = Character:WaitForChild("Humanoid")
+                HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+                Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
+                Humanoid.AutoRotate = true
+            end
+        end
+        
+        local function startOverride()
+            if overrideConnection then return end
+            
+            overrideConnection = RunService.RenderStepped:Connect(function()
+                if not Character or not Humanoid or not HumanoidRootPart then
+                    return
+                end
+                
+                Humanoid.WalkSpeed = ORIGINAL_DASH_SPEED
+                Humanoid.AutoRotate = false
+                
+                local direction = HumanoidRootPart.CFrame.LookVector
+                local horizontalDirection = Vector3.new(direction.X, 0, direction.Z).Unit
+                Humanoid:Move(horizontalDirection)
+            end)
+        end
+        
+        local function stopOverride()
+            if overrideConnection then
+                overrideConnection:Disconnect()
+                overrideConnection = nil
+            end
+            
+            if Humanoid then
+                Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
+                Humanoid.AutoRotate = true
+                Humanoid:Move(Vector3.new(0, 0, 0))
+            end
+        end
+        
+        local function monitorVoidRush()
+            while enabled and task.wait() do
+                if not Character or not Humanoid or not HumanoidRootPart then
+                    setupCharacter()
+                    if not Character then continue end
+                end
+                
+                local voidRushState = Character:GetAttribute("VoidRushState")
+                if voidRushState == "Dashing" then
+                    startOverride()
+                else
+                    stopOverride()
+                end
+            end
+            stopOverride()
+        end
+        
+        local function cleanup()
+            if monitorTask then
+                task.cancel(monitorTask)
+                monitorTask = nil
+            end
+            
+            if characterAddedConnection then
+                characterAddedConnection:Disconnect()
+                characterAddedConnection = nil
+            end
+            
+            stopOverride()
+            setupCharacter()
+        end
+        
+        if enabled then
+            cleanup()
+            setupCharacter()
+            monitorTask = task.spawn(monitorVoidRush)
+            
+            characterAddedConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
+                Character = newChar
+                Humanoid = Character:WaitForChild("Humanoid")
+                HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+                if not enabled then
+                    Humanoid.WalkSpeed = DEFAULT_WALK_SPEED
+                    Humanoid.AutoRotate = true
+                end
+            end)
+        else
+            cleanup()
+        end
+    end
+})
+
+local ZZ = Tabs.BanEffect:AddRightGroupbox('1x4反效果')
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local RemoteEvent = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
+
+local AutoPopup = {
+    Enabled = false,
+    Task = nil,
+    Connections = {},
+    Interval = 0.5
+}
+
+local function deletePopups()
+    if not LocalPlayer or not LocalPlayer:FindFirstChild("PlayerGui") then
+        return false
+    end
+    
+    local tempUI = LocalPlayer.PlayerGui:FindFirstChild("TemporaryUI")
+    if not tempUI then
+        return false
+    end
+    
+    local deleted = false
+    for _, popup in ipairs(tempUI:GetChildren()) do
+        if popup.Name == "1x1x1x1Popup" then
+            popup:Destroy()
+            deleted = true
+        end
+    end
+    return deleted
+end
+
+local function triggerEntangled()
+    local args = { [1] = "Entangled" }
+    pcall(function()
+        RemoteEvent:FireServer(unpack(args))
+    end)
+end
+
+local function setupPopupListener()
+    if not LocalPlayer or not LocalPlayer:FindFirstChild("PlayerGui") then return end
+    
+    local tempUI = LocalPlayer.PlayerGui:FindFirstChild("TemporaryUI")
+    if not tempUI then
+        tempUI = Instance.new("Folder")
+        tempUI.Name = "TemporaryUI"
+        tempUI.Parent = LocalPlayer.PlayerGui
+    end
+    
+    if AutoPopup.Connections.ChildAdded then
+        AutoPopup.Connections.ChildAdded:Disconnect()
+    end
+    
+    AutoPopup.Connections.ChildAdded = tempUI.ChildAdded:Connect(function(child)
+        if AutoPopup.Enabled and child.Name == "1x1x1x1Popup" then
+            task.defer(function()
+                child:Destroy()
+            end)
+        end
+    end)
+end
+
+local function runMainTask()
+    while AutoPopup.Enabled do
+        deletePopups()
+        triggerEntangled()
+        task.wait(AutoPopup.Interval) -- 使用设置的间隔时间
+    end
+end
+
+local function startAutoPopup()
+    if AutoPopup.Enabled then return end
+    
+    AutoPopup.Enabled = true
+    setupPopupListener()
+    
+    if AutoPopup.Task then
+        task.cancel(AutoPopup.Task)
+    end
+    AutoPopup.Task = task.spawn(runMainTask)
+end
+
+local function stopAutoPopup()
+    if not AutoPopup.Enabled then return end
+    
+    AutoPopup.Enabled = false
+    
+    if AutoPopup.Task then
+        task.cancel(AutoPopup.Task)
+        AutoPopup.Task = nil
+    end
+    
+    for _, connection in pairs(AutoPopup.Connections) do
+        connection:Disconnect()
+    end
+    AutoPopup.Connections = {}
+end
+
+-- 添加间隔时间调整滑块
+ZZ:AddSlider('AutoPopupInterval', {
+    Text = '执行间隔(秒)',
+    Default = 0.5,
+    Min = 0.5,
+    Max = 2,
+    Rounding = 0,
+    Tooltip = '设置自动执行的间隔时间(1-5秒)',
+    Callback = function(value)
+        AutoPopup.Interval = value
+    end
+})
+
+ZZ:AddToggle('AutoPopupToggle', {
+    Text = '反1x4弹窗(反懒惰效果)',
+    Default = false,
+    Tooltip = '反弹窗和懒惰效果',
+    Callback = function(state)
+        if state then
+            startAutoPopup()
+        else
+            stopAutoPopup()
+        end
+    end
+})
+
+if LocalPlayer then
+    LocalPlayer:GetPropertyChangedSignal("Parent"):Connect(function()
+        if not LocalPlayer.Parent then
+            stopAutoPopup()
+        end
+    end)
+end
+
+ZZ:AddToggle("RemoveUnstableEye", {
+    Text = "反不稳定之眼不能移动", 
+    Default = false,
+    Callback = function(v)
+        if not _G.UnstableEyeCleanup then _G.UnstableEyeCleanup = {} end
+        local connections = _G.UnstableEyeCleanup
+
+        -- 先清理现有的连接
+        for _, conn in pairs(connections) do
+            if typeof(conn) == "RBXScriptConnection" then
+                conn:Disconnect()
+            end
+        end
+        _G.UnstableEyeCleanup = {}
+
+        -- 如果关闭按钮，直接返回
+        if not v then return end
+
+        local function CleanUnstableEyeEffects()
+            local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+            if not killersFolder then return end
+            
+            for _, killer in ipairs(killersFolder:GetDescendants()) do
+                if killer.Name == "UnstableEye" then
+                    killer:Destroy()
+                end
+            end
+        end
+
+        -- 初始清理
+        task.spawn(CleanUnstableEyeEffects)
+
+        -- 设置定期清理
+        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+            task.wait(1.5)
+            CleanUnstableEyeEffects()
+        end)
+
+        -- 设置新对象添加时的监听
+        local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+        if killersFolder then
+            connections.descendantAdded = killersFolder.DescendantAdded:Connect(function(descendant)
+                if descendant.Name == "UnstableEye" then
+                    descendant:Destroy()
+                end
+            end)
+        end
+    end
+})
+
+ZZ:AddToggle("RemoveBlindness", {
+    Text = "反失明效果", 
+    Default = false,
+    Callback = function(v)
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        
+        -- 获取 Modules.StatusEffects 路径
+        local modulesFolder = ReplicatedStorage:FindFirstChild("Modules")
+        local statusEffects = modulesFolder and modulesFolder:FindFirstChild("StatusEffects")
+        
+        if v then
+            -- 确保路径存在
+            if not statusEffects then
+                warn("未找到 ReplicatedStorage.Modules.StatusEffects 路径")
+                return
+            end
+            
+            -- 查找并删除 Blindness 模块
+            local blindness = statusEffects:FindFirstChild("Blindness")
+            if blindness then
+                blindness:Destroy()
+                print("已删除 Blindness 模块")
+            else
+                print("未找到 Blindness 模块")
+            end
+            
+            -- 设置持续检查
+            if not _G.BlindnessCleanup then _G.BlindnessCleanup = {} end
+            local connections = _G.BlindnessCleanup
+            
+            -- 定期检查
+            connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+                task.wait(1.5)
+                local blindness = statusEffects:FindFirstChild("Blindness")
+                if blindness then
+                    blindness:Destroy()
+                end
+            end)
+            
+            -- 监听新增模块
+            connections.descendantAdded = statusEffects.DescendantAdded:Connect(function(descendant)
+                if descendant.Name == "Blindness" then
+                    task.wait(0.1) -- 确保模块完全加载
+                    descendant:Destroy()
+                end
+            end)
+        else
+            -- 关闭时清理连接
+            if _G.BlindnessCleanup then
+                for _, conn in pairs(_G.BlindnessCleanup) do
+                    conn:Disconnect()
+                end
+                _G.BlindnessCleanup = {}
+            end
+        end
+    end
+})
+
+local ZZ = Tabs.BanEffect:AddRightGroupbox('其他反效果')
+
+ZZ:AddToggle("RemoveStunningKiller", {
+    Text = "反谢德出剑缓慢移速", 
+    Default = false,
+    Callback = function(v)
+        -- 初始化全局变量
+        if not _G.StunningKillerCleanup then _G.StunningKillerCleanup = {} end
+        local connections = _G.StunningKillerCleanup
+
+        -- 关闭时清理所有连接
+        for _, conn in pairs(connections) do
+            if typeof(conn) == "RBXScriptConnection" then
+                conn:Disconnect()
+            end
+        end
+        _G.StunningKillerCleanup = {}
+
+        -- 如果关闭按钮，直接返回
+        if not v then return end
+
+        local function CleanStunningKillers()
+            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+            if not survivorsFolder then return end
+            
+            local survivorList = survivorsFolder:GetChildren()
+            for i = 1, #survivorList, 5 do
+                task.spawn(function()
+                    for j = i, math.min(i + 4, #survivorList) do
+                        local survivor = survivorList[j]
+                        local stunningKiller = survivor:FindFirstChild("Killer")
+                        if stunningKiller then
+                            stunningKiller:Destroy()
+                        end
+                    end
+                end)
+            end
+        end
+
+        -- 初始清理
+        task.spawn(CleanStunningKillers)
+
+        -- 设置定期清理
+        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+            task.wait(2)
+            CleanStunningKillers()
+        end)
+
+        -- 设置新对象添加时的监听
+        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+        if survivorsFolder then
+            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
+                if descendant.Name == "Killer" then
+                    descendant:Destroy()
+                end
+            end)
+        end
+    end
+})
+
+ZZ:AddToggle("NoobRemoveSlateskin", {
+    Text = "反菜鸟石板皮肤缓慢效果", 
+    Default = false,
+    Callback = function(v)
+        if SlateskinCleanupConnection then
+            SlateskinCleanupConnection:Disconnect()
+            SlateskinCleanupConnection = nil
+            table.clear(slateskinCache)
+        end
+
+        if v then
+            local function CleanSlateskins()
+                local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+                if not survivorsFolder then return end
+                
+                local survivorList = survivorsFolder:GetChildren()
+                for i = 1, #survivorList, 5 do
+                    task.spawn(function()
+                        for j = i, math.min(i + 4, #survivorList) do
+                            local survivor = survivorList[j]
+                            local slateskin = survivor:FindFirstChild("SlateskinStatus")
+                            if slateskin then
+                                slateskin:Destroy()
+                            end
+                        end
+                    end)
+                end
+            end
+
+            task.spawn(CleanSlateskins)
+
+            SlateskinCleanupConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                task.wait(2)
+                CleanSlateskins()
+            end)
+
+            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+            if survivorsFolder then
+                survivorsFolder.DescendantAdded:Connect(function(descendant)
+                    if descendant.Name == "SlateskinStatus" then
+                        descendant:Destroy()
+                    end
+                end)
+            end
+        end
+    end
+})
+
+ZZ:AddToggle("AntiSubspace", {
+    Text = "反塔夫模糊和颜色反转效果",
+    Default = false,
+    Callback = function()
+        task.spawn(function()
+            while Toggles.AntiSubspace.Value and task.wait() do
+                local subspace = {
+                    "SubspaceVFXBlur",
+                    "SubspaceVFXColorCorrection"
+                }
+
+                for i, v in pairs(subspace) do
+                    if game.Lighting:FindFirstChild(v) then
+                        game.Lighting[v]:Destroy()
+                    end
+                end
+            end
+        end)
+    end
+})
+
+local Disabled = Tabs.BanEffect:AddLeftGroupbox('访客1337反效果')
+
+-- 1. 反访客冲刺没有击中都缓慢
+Disabled:AddToggle("RemoveSlowed", {
+    Text = "反冲刺没有击中都缓慢", 
+    Default = false,
+    Callback = function(v)
+        -- 修复点：使用局部变量保存连接
+        if not _G.SlowedCleanup then _G.SlowedCleanup = {} end
+        local connections = _G.SlowedCleanup
+
+        -- 关闭时断开所有连接
+        if not v then
+            for _, conn in pairs(connections) do
+                conn:Disconnect()
+            end
+            _G.SlowedCleanup = {}
+            return
+        end
+
+        -- 修复点：显式保存 DescendantAdded 事件
+        local function CleanSlowedStatuses()
+            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+            if not survivorsFolder then return end
+            
+            for _, survivor in ipairs(survivorsFolder:GetDescendants()) do
+                if survivor.Name == "SlowedStatus" then
+                    survivor:Destroy()
+                end
+            end
+        end
+
+        task.spawn(CleanSlowedStatuses)
+
+        -- 保存心跳连接
+        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+            task.wait(1.5)
+            CleanSlowedStatuses()
+        end)
+
+        -- 保存新增监听
+        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+        if survivorsFolder then
+            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
+                if descendant.Name == "SlowedStatus" then
+                    descendant:Destroy()
+                end
+            end)
+        end
+    end
+})
+
+-- 2. 反访客格挡时移速问题 (独立变量名)
+Disabled:AddToggle("RemoveBlockingSlow", {
+    Text = "反格挡时移速问题", 
+    Default = false,
+    Callback = function(v)
+        if not _G.BlockingCleanup then _G.BlockingCleanup = {} end
+        local connections = _G.BlockingCleanup
+
+        if not v then
+            for _, conn in pairs(connections) do
+                conn:Disconnect()
+            end
+            _G.BlockingCleanup = {}
+            return
+        end
+
+        local function CleanStatuses()
+            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+            if not survivorsFolder then return end
+            
+            for _, survivor in ipairs(survivorsFolder:GetDescendants()) do
+                if survivor.Name == "ResistanceStatus" or survivor.Name == "GuestBlocking" then
+                    survivor:Destroy()
+                end
+            end
+        end
+
+        task.spawn(CleanStatuses)
+
+        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+            task.wait(1.5)
+            CleanStatuses()
+        end)
+
+        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+        if survivorsFolder then
+            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
+                if descendant.Name == "ResistanceStatus" or descendant.Name == "GuestBlocking" then
+                    descendant:Destroy()
+                end
+            end)
+        end
+    end
+})
+
+-- 3. 反访客拳击时移速问题 (独立变量名)
+Disabled:AddToggle("RemovePunchSlow", {
+    Text = "反拳击时移速问题", 
+    Default = false,
+    Callback = function(v)
+        if not _G.PunchCleanup then _G.PunchCleanup = {} end
+        local connections = _G.PunchCleanup
+
+        if not v then
+            for _, conn in pairs(connections) do
+                conn:Disconnect()
+            end
+            _G.PunchCleanup = {}
+            return
+        end
+
+        local function CleanStatuses()
+            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+            if not survivorsFolder then return end
+            
+            for _, survivor in ipairs(survivorsFolder:GetDescendants()) do
+                if survivor.Name == "ResistanceStatus" or survivor.Name == "PunchAbility" then
+                    survivor:Destroy()
+                end
+            end
+        end
+
+        task.spawn(CleanStatuses)
+
+        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+            task.wait(1.5)
+            CleanStatuses()
+        end)
+
+        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+        if survivorsFolder then
+            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
+                if descendant.Name == "ResistanceStatus" or descendant.Name == "PunchAbility" then
+                    descendant:Destroy()
+                end
+            end)
+        end
+    end
+})
+
+-- 5. 反访客冲刺结束效果
+Disabled:AddToggle("RemoveChargeEnded", {
+    Text = "反冲刺结束效果", 
+    Default = false,
+    Callback = function(v)
+        if not _G.ChargeEndedCleanup then _G.ChargeEndedCleanup = {} end
+        local connections = _G.ChargeEndedCleanup
+
+        if not v then
+            for _, conn in pairs(connections) do
+                conn:Disconnect()
+            end
+            _G.ChargeEndedCleanup = {}
+            return
+        end
+
+        local function CleanChargeEndedEffects()
+            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+            if not survivorsFolder then return end
+            
+            for _, survivor in ipairs(survivorsFolder:GetDescendants()) do
+                if survivor.Name == "GuestChargeEnded" then
+                    survivor:Destroy()
+                end
+            end
+        end
+
+        task.spawn(CleanChargeEndedEffects)
+
+        connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+            task.wait(1.5)
+            CleanChargeEndedEffects()
+        end)
+
+        local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
+        if survivorsFolder then
+            connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
+                if descendant.Name == "GuestChargeEnded" then
+                    descendant:Destroy()
+                end
+            end)
+        end
+    end
+})
+
+local Player = Tabs.AnimationAction:AddLeftGroupbox("动作功能")
+
+Player:AddToggle("SillyBillyToggle", {
+    Text = "Silly Billy",
+    Default = false,
+    Tooltip = "播放Silly Billy表情动作",
+    Callback = function(state)
+        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+        local humanoid = char:WaitForChild("Humanoid")
+        local rootPart = char:WaitForChild("HumanoidRootPart")
+        
+        if state then
+            -- 激活状态
+            humanoid.PlatformStand = true
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+            bodyVelocity.Velocity = Vector3.zero
+            bodyVelocity.Parent = rootPart
+            
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://107464355830477"
+            local animationTrack = humanoid:LoadAnimation(animation)
+            animationTrack:Play()
+            
+            local sound = Instance.new("Sound")
+            sound.SoundId = "rbxassetid://77601084987544"
+            sound.Parent = rootPart
+            sound.Volume = 0.5
+            sound.Looped = false
+            sound:Play()
+            
+            animationTrack.Stopped:Connect(function()
+                humanoid.PlatformStand = false
+                if bodyVelocity and bodyVelocity.Parent then
+                    bodyVelocity:Destroy()
+                end
+                
+                for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
+                    local asset = char:FindFirstChild(assetName)
+                    if asset then asset:Destroy() end
+                end
+            end)
+        else
+            -- 关闭状态
+            humanoid.PlatformStand = false
+            humanoid.JumpPower = 0
+            
+            for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
+                local asset = char:FindFirstChild(assetName)
+                if asset then asset:Destroy() end
+            end
+            
+            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
+            if bodyVelocity then bodyVelocity:Destroy() end
+            
+            local sound = rootPart:FindFirstChildOfClass("Sound")
+            if sound then
+                sound:Stop()
+                sound:Destroy()
+            end
+            
+            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                if track.Animation.AnimationId == "rbxassetid://107464355830477" then
+                    track:Stop()
+                end
+            end
+        end
+    end
+})
+
+-- Silly of it 动作按钮
+Player:AddToggle("SillyOfItToggle", {
+    Text = "Silly of it",
+    Default = false,
+    Tooltip = "播放Silly of it表情动作",
+    Callback = function(state)
+        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+        local humanoid = char:WaitForChild("Humanoid")
+        local rootPart = char:WaitForChild("HumanoidRootPart")
+        
+        if state then
+            -- 激活状态（完整实现，与原始函数相同）
+            humanoid.PlatformStand = true
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+            bodyVelocity.Velocity = Vector3.zero
+            bodyVelocity.Parent = rootPart
+            
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://107464355830477"
+            local animationTrack = humanoid:LoadAnimation(animation)
+            animationTrack:Play()
+            
+            local sound = Instance.new("Sound")
+            sound.SoundId = "rbxassetid://120176009143091"
+            sound.Parent = rootPart
+            sound.Volume = 0.5
+            sound.Looped = false
+            sound:Play()
+            
+            animationTrack.Stopped:Connect(function()
+                humanoid.PlatformStand = false
+                if bodyVelocity and bodyVelocity.Parent then
+                    bodyVelocity:Destroy()
+                end
+                
+                for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
+                    local asset = char:FindFirstChild(assetName)
+                    if asset then asset:Destroy() end
+                end
+            end)
+        else
+            -- 关闭状态（完整实现）
+            humanoid.PlatformStand = false
+            humanoid.JumpPower = 0
+            
+            for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
+                local asset = char:FindFirstChild(assetName)
+                if asset then asset:Destroy() end
+            end
+            
+            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
+            if bodyVelocity then bodyVelocity:Destroy() end
+            
+            local sound = rootPart:FindFirstChildOfClass("Sound")
+            if sound then
+                sound:Stop()
+                sound:Destroy()
+            end
+            
+            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                if track.Animation.AnimationId == "rbxassetid://107464355830477" then
+                    track:Stop()
+                end
+            end
+        end
+    end
+})
+
+-- Subterfuge 动作按钮
+Player:AddToggle("SubterfugeToggle", {
+    Text = "Subterfuge",
+    Default = false,
+    Tooltip = "播放Subterfuge表情动作",
+    Callback = function(state)
+        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+        local humanoid = char:WaitForChild("Humanoid")
+        local rootPart = char:WaitForChild("HumanoidRootPart")
+        
+        if state then
+            -- 激活状态（完整实现）
+            humanoid.PlatformStand = true
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+            bodyVelocity.Velocity = Vector3.zero
+            bodyVelocity.Parent = rootPart
+            
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://87482480949358"
+            local animationTrack = humanoid:LoadAnimation(animation)
+            animationTrack:Play()
+            
+            local sound = Instance.new("Sound")
+            sound.SoundId = "rbxassetid://132297506693854"
+            sound.Parent = rootPart
+            sound.Volume = 2
+            sound.Looped = false
+            sound:Play()
+            
+            local args = {
+                [1] = "PlayEmote",
+                [2] = "Animations",
+                [3] = "_Subterfuge"
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
+            
+            animationTrack.Stopped:Connect(function()
+                humanoid.PlatformStand = false
+                if bodyVelocity and bodyVelocity.Parent then
+                    bodyVelocity:Destroy()
+                end
+            end)
+        else
+            -- 关闭状态（完整实现）
+            humanoid.PlatformStand = false
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
+            if bodyVelocity then bodyVelocity:Destroy() end
+            
+            local sound = rootPart:FindFirstChildOfClass("Sound")
+            if sound then
+                sound:Stop()
+                sound:Destroy()
+            end
+            
+            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                if track.Animation.AnimationId == "rbxassetid://87482480949358" then
+                    track:Stop()
+                end
+            end
+        end
+    end
+})
+
+-- Aw Shucks 动作按钮
+Player:AddToggle("AwShucksToggle", {
+    Text = "Aw Shucks",
+    Default = false,
+    Tooltip = "播放Aw Shucks表情动作",
+    Callback = function(state)
+        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+        local humanoid = char:WaitForChild("Humanoid")
+        local rootPart = char:WaitForChild("HumanoidRootPart")
+        
+        if state then
+            -- 激活状态（完整实现）
+            humanoid.PlatformStand = true
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+            bodyVelocity.Velocity = Vector3.zero
+            bodyVelocity.Parent = rootPart
+            
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://74238051754912"
+            local animationTrack = humanoid:LoadAnimation(animation)
+            animationTrack:Play()
+            
+            local sound = Instance.new("Sound")
+            sound.SoundId = "rbxassetid://123236721947419"
+            sound.Parent = rootPart
+            sound.Volume = 0.5
+            sound.Looped = false
+            sound:Play()
+            
+            local args = {
+                [1] = "PlayEmote",
+                [2] = "Animations",
+                [3] = "Shucks"
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
+            
+            animationTrack.Stopped:Connect(function()
+                humanoid.PlatformStand = false
+                if bodyVelocity and bodyVelocity.Parent then
+                    bodyVelocity:Destroy()
+                end
+            end)
+        else
+            -- 关闭状态（完整实现）
+            humanoid.PlatformStand = false
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
+            if bodyVelocity then bodyVelocity:Destroy() end
+            
+            local sound = rootPart:FindFirstChildOfClass("Sound")
+            if sound then
+                sound:Stop()
+                sound:Destroy()
+            end
+            
+            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                if track.Animation.AnimationId == "rbxassetid://74238051754912" then
+                    track:Stop()
+                end
+            end
+        end
+    end
+})
+
+-- Miss The Quiet 动作按钮
+Player:AddToggle("MissTheQuietToggle", {
+    Text = "Miss The Quiet",
+    Default = false,
+    Tooltip = "播放Miss The Quiet表情动作",
+    Callback = function(state)
+        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+        local humanoid = char:WaitForChild("Humanoid")
+        local rootPart = char:WaitForChild("HumanoidRootPart")
+        
+        if state then
+            -- 激活状态（完整实现）
+            humanoid.PlatformStand = true
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+            bodyVelocity.Velocity = Vector3.zero
+            bodyVelocity.Parent = rootPart
+            
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://100986631322204"
+            local animationTrack = humanoid:LoadAnimation(animation)
+            animationTrack:Play()
+            
+            local sound = Instance.new("Sound")
+            sound.SoundId = "rbxassetid://131936418953291"
+            sound.Parent = rootPart
+            sound.Volume = 0.5
+            sound.Looped = false
+            sound:Play()
+            
+            animationTrack.Stopped:Connect(function()
+                humanoid.PlatformStand = false
+                if bodyVelocity and bodyVelocity.Parent then
+                    bodyVelocity:Destroy()
+                end
+                
+                for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
+                    local asset = char:FindFirstChild(assetName)
+                    if asset then asset:Destroy() end
+                end
+            end)
+        else
+            -- 关闭状态（完整实现）
+            humanoid.PlatformStand = false
+            humanoid.JumpPower = 0
+            
+            for _, assetName in ipairs({"EmoteHatAsset", "EmoteLighting", "PlayerEmoteHand"}) do
+                local asset = char:FindFirstChild(assetName)
+                if asset then asset:Destroy() end
+            end
+            
+            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
+            if bodyVelocity then bodyVelocity:Destroy() end
+            
+            local sound = rootPart:FindFirstChildOfClass("Sound")
+            if sound then
+                sound:Stop()
+                sound:Destroy()
+            end
+            
+            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                if track.Animation.AnimationId == "rbxassetid://100986631322204" then
+                    track:Stop()
+                end
+            end
+        end
+    end
+})
+
+local Player = Tabs.AnimationAction:AddRightGroupbox('VIP舞蹈')
+
+Player:AddToggle("VIPToggleNew", {
+    Text = "VIP (新音频)",
+    Default = false,
+    Tooltip = "播放VIP表情动作（新版音频）",
+    Callback = function(state)
+        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+        local humanoid = char:WaitForChild("Humanoid")
+        local rootPart = char:WaitForChild("HumanoidRootPart")
+        
+        if state then
+            -- 激活状态（完整实现）
+            humanoid.PlatformStand = true
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+            bodyVelocity.Velocity = Vector3.zero
+            bodyVelocity.Parent = rootPart
+            
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://138019937280193"
+            local animationTrack = humanoid:LoadAnimation(animation)
+            animationTrack:Play()
+            
+            local sound = Instance.new("Sound")
+            sound.SoundId = "rbxassetid://109474987384441"
+            sound.Parent = rootPart
+            sound.Volume = 0.5
+            sound.Looped = true
+            sound:Play()
+            
+            local effect = game:GetService("ReplicatedStorage").Assets.Emotes.HakariDance.HakariBeamEffect:Clone()
+            effect.Name = "PlayerEmoteVFX"
+            effect.CFrame = char.PrimaryPart.CFrame * CFrame.new(0, -1, -0.3)
+            effect.WeldConstraint.Part0 = char.PrimaryPart
+            effect.WeldConstraint.Part1 = effect
+            effect.Parent = char
+            effect.CanCollide = false
+            
+            local args = {
+                [1] = "PlayEmote",
+                [2] = "Animations",
+                [3] = "HakariDance"
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
+            
+            animationTrack.Stopped:Connect(function()
+                humanoid.PlatformStand = false
+                if bodyVelocity and bodyVelocity.Parent then
+                    bodyVelocity:Destroy()
+                end
+            end)
+        else
+            -- 关闭状态（完整实现）
+            humanoid.PlatformStand = false
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
+            if bodyVelocity then bodyVelocity:Destroy() end
+            
+            local sound = rootPart:FindFirstChildOfClass("Sound")
+            if sound then
+                sound:Stop()
+                sound:Destroy()
+            end
+            
+            local effect = char:FindFirstChild("PlayerEmoteVFX")
+            if effect then effect:Destroy() end
+            
+            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                if track.Animation.AnimationId == "rbxassetid://138019937280193" then
+                    track:Stop()
+                end
+            end
+        end
+    end
+})
+
+-- VIP动作（旧音频）按钮
+Player:AddToggle("VIPToggleOld", {
+    Text = "VIP (旧音频)",
+    Default = false,
+    Tooltip = "播放VIP表情动作（旧版音频）",
+    Callback = function(state)
+        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+        local humanoid = char:WaitForChild("Humanoid")
+        local rootPart = char:WaitForChild("HumanoidRootPart")
+        
+        if state then
+            -- 激活状态（完整实现）
+            humanoid.PlatformStand = true
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+            bodyVelocity.Velocity = Vector3.zero
+            bodyVelocity.Parent = rootPart
+            
+            local animation = Instance.new("Animation")
+            animation.AnimationId = "rbxassetid://138019937280193"
+            local animationTrack = humanoid:LoadAnimation(animation)
+            animationTrack:Play()
+            
+            local sound = Instance.new("Sound")
+            sound.SoundId = "rbxassetid://87166578676888"
+            sound.Parent = rootPart
+            sound.Volume = 0.5
+            sound.Looped = true
+            sound:Play()
+            
+            local effect = game:GetService("ReplicatedStorage").Assets.Emotes.HakariDance.HakariBeamEffect:Clone()
+            effect.Name = "PlayerEmoteVFX"
+            effect.CFrame = char.PrimaryPart.CFrame * CFrame.new(0, -1, -0.3)
+            effect.WeldConstraint.Part0 = char.PrimaryPart
+            effect.WeldConstraint.Part1 = effect
+            effect.Parent = char
+            effect.CanCollide = false
+            
+            local args = {
+                [1] = "PlayEmote",
+                [2] = "Animations",
+                [3] = "HakariDance"
+            }
+            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
+            
+            animationTrack.Stopped:Connect(function()
+                humanoid.PlatformStand = false
+                if bodyVelocity and bodyVelocity.Parent then
+                    bodyVelocity:Destroy()
+                end
+            end)
+        else
+            -- 关闭状态（完整实现）
+            humanoid.PlatformStand = false
+            humanoid.JumpPower = 0
+            
+            local bodyVelocity = rootPart:FindFirstChildOfClass("BodyVelocity")
+            if bodyVelocity then bodyVelocity:Destroy() end
+            
+            local sound = rootPart:FindFirstChildOfClass("Sound")
+            if sound then
+                sound:Stop()
+                sound:Destroy()
+            end
+            
+            local effect = char:FindFirstChild("PlayerEmoteVFX")
+            if effect then effect:Destroy() end
+            
+            for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                if track.Animation.AnimationId == "rbxassetid://138019937280193" then
+                    track:Stop()
+                end
+            end
+        end
+    end
+})
+
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local MVP = Tabs.PhysicalStrength:AddLeftGroupbox("体力功能")
+
+-- 体力系统设置
+local StaminaSettings = {
+    MaxStamina = 100,      -- 最大体力值
+    StaminaGain = 25,      -- 体力恢复速度
+    StaminaLoss = 10,      -- 体力消耗速度
+    SprintSpeed = 28,      -- 奔跑速度
+    InfiniteGain = 9999    -- 无限体力恢复速度
+}
+
+-- 体力控制开关
+local SettingToggles = {
+    MaxStamina = true,
+    StaminaGain = true,
+    StaminaLoss = true,
+    SprintSpeed = true
+}
+
+-- 获取游戏体力模块
+local SprintingModule = ReplicatedStorage:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
+local GetModule = function() return require(SprintingModule) end
+
+-- 实时更新体力设置
+task.spawn(function()
+    while true do
+        local m = GetModule()
+        for key, value in pairs(StaminaSettings) do
+            if SettingToggles[key] then
+                m[key] = value
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- 无限体力功能
+local bai = {Spr = false}
+local connection
+
+MVP:AddToggle('InfiniteStamina', {
+    Text = '无限体力',
+    Default = false,
+    Callback = function(state)
+        bai.Spr = state
+        local Sprinting = GetModule()
+
+        if state then
+            Sprinting.StaminaLoss = 0
+            Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999
+
+            if connection then connection:Disconnect() end
+            connection = RunService.Heartbeat:Connect(function()
+                if not bai.Spr then return end
+                Sprinting.StaminaLoss = 0
+                Sprinting.StaminaGain = StaminaSettings.InfiniteGain or 9999
+            end)
+        else
+            Sprinting.StaminaLoss = StaminaSettings.StaminaLoss or 10
+            Sprinting.StaminaGain = StaminaSettings.StaminaGain or 25
+
+            if connection then
+                connection:Disconnect()
+                connection = nil
+            end
+        end
+    end
+})
+
+MVP:AddToggle('MaxStaminaToggle', {
+    Text = '启用体力大小调节',
+    Default = true,
+    Callback = function(Value)
+        SettingToggles.MaxStamina = Value
+    end
+})
 
 
+MVP:AddToggle('StaminaGainToggle', {
+    Text = '启用体力恢复调节',
+    Default = true,
+    Callback = function(Value)
+        SettingToggles.StaminaGain = Value
+    end
+})
+
+MVP:AddToggle('StaminaLossToggle', {
+    Text = '启用体力消耗调节',
+    Default = true,
+    Callback = function(Value)
+        SettingToggles.StaminaLoss = Value
+    end
+})
+
+MVP:AddToggle('SprintSpeedToggle', {
+    Text = '启用奔跑速度调节',
+    Default = true,
+    Callback = function(Value)
+        SettingToggles.SprintSpeed = Value
+    end
+})
+
+local MVP = Tabs.PhysicalStrength:AddRightGroupbox("调试")
+
+MVP:AddSlider('InfStaminaGainSlider', {
+    Text = '无限体力恢复速度',
+    Default = 9999,
+    Min = 0,
+    Max = 50000,
+    Rounding = 0,
+    Callback = function(Value)
+        StaminaSettings.InfiniteGain = Value
+    end
+})
 
 
+MVP:AddSlider('MySlider1', {
+    Text = '体力大小',
+    Default = 100,
+    Min = 0,
+    Max = 99999,
+    Rounding = 0,
+    Callback = function(Value)
+        StaminaSettings.MaxStamina = Value
+    end
+})
 
 
+MVP:AddSlider('MySlider2', {
+    Text = '体力恢复',
+    Default = 25,
+    Min = 0,
+    Max = 250,
+    Rounding = 0,
+    Callback = function(Value)
+        StaminaSettings.StaminaGain = Value
+    end
+})
+
+
+MVP:AddSlider('MySlider3', {
+    Text = '体力消耗',
+    Default = 10,
+    Min = 0,
+    Max = 100,
+    Rounding = 0,
+    Callback = function(Value)
+        StaminaSettings.StaminaLoss = Value
+    end
+})
+
+
+MVP:AddSlider('MySlider4', {
+    Text = '奔跑速度',
+    Default = 28,
+    Min = 0,
+    Max = 200,
+    Rounding = 0,
+    Callback = function(Value)
+        StaminaSettings.SprintSpeed = Value
+    end
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local PZ = Tabs.Pizza:AddLeftGroupbox("披萨")
+
+local pizzaConnection = nil
+local pizzaTPConnection = nil
+local pizzaAttractionActive = false
+local pizzaCache = {}
+local pizzaEffects = {}
+
+local function createPizzaEffect(pizza, effectName)
+    if not pizza:FindFirstChild(effectName) then
+        local effect = Instance.new("ParticleEmitter")
+        effect.Name = effectName
+        effect.Texture = "rbxassetid://242487987"
+        effect.LightEmission = 0.8
+        effect.Size = NumberSequence.new(0.5)
+        if effectName == "TeleportEffect" then
+            effect.Lifetime = NumberRange.new(0.5)
+        end
+        effect.Parent = pizza
+        pizzaEffects[pizza] = effect
+        return effect
+    end
+    return pizzaEffects[pizza]
+end
+
+local function cleanUpEffects()
+    for pizza, effect in pairs(pizzaEffects) do
+        if not pizza or not pizza.Parent then
+            effect:Destroy()
+            pizzaEffects[pizza] = nil
+        end
+    end
+end
+
+local function findClosestPizza(rootPart)
+    local pizzaFolder = workspace:FindFirstChild("Pizzas") or workspace.Map
+    if not pizzaFolder then return nil end
+    
+    local closestPizza, closestDistance = nil, math.huge
+    for _, pizza in ipairs(pizzaFolder:GetDescendants()) do
+        if pizza:IsA("BasePart") and pizza.Name == "Pizza" and not pizzaCache[pizza] then
+            local distance = (rootPart.Position - pizza.Position).Magnitude
+            if distance < closestDistance then
+                closestPizza = pizza
+                closestDistance = distance
+            end
+        end
+    end
+    return closestPizza
+end
+
+PZ:AddToggle("AEP", {
+    Text = "自动吃披萨(追踪传送)",
+    Default = false,
+    Tooltip = "当生命值低于设定值时自动吸引附近的披萨",
+    Callback = function(enabled)
+        _G.AutoEatPizza = enabled
+        
+        if pizzaConnection then
+            pizzaConnection:Disconnect()
+            pizzaConnection = nil
+        end
+        
+        if enabled then
+            pizzaConnection = RunService.Heartbeat:Connect(function()
+                local player = Players.LocalPlayer
+                local character = player.Character
+                if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then
+                    return
+                end
+                
+                local humanoid = character.Humanoid
+                local rootPart = character.HumanoidRootPart
+                
+                if _G.HealthEatPizza and humanoid.Health >= _G.HealthEatPizza then
+                    return
+                end
+                
+                local closestPizza = findClosestPizza(rootPart)
+                if closestPizza then
+                    closestPizza.CFrame = closestPizza.CFrame:Lerp(
+                        rootPart.CFrame * CFrame.new(0, 0, -2),
+                        0.5
+                    )
+                    createPizzaEffect(closestPizza, "AttractEffect")
+                end
+                cleanUpEffects()
+            end)
+        end
+    end
+})
+
+PZ:AddToggle("ATP", {
+    Text = "自动吃披萨(传送)",
+    Default = false,
+    Tooltip = "当生命值低于设定值时自动将最近的披萨传送到玩家",
+    Callback = function(enabled)
+        _G.AutoTeleportPizza = enabled
+        
+        if pizzaTPConnection then
+            pizzaTPConnection:Disconnect()
+            pizzaTPConnection = nil
+        end
+        
+        if enabled then
+            pizzaTPConnection = RunService.Heartbeat:Connect(function()
+                local player = Players.LocalPlayer
+                local character = player.Character
+                if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then
+                    return
+                end
+                
+                local humanoid = character.Humanoid
+                local rootPart = character.HumanoidRootPart
+                
+                if _G.HealthEatPizza and humanoid.Health >= _G.HealthEatPizza then
+                    return
+                end
+                
+                local closestPizza = findClosestPizza(rootPart)
+                if closestPizza then
+                    closestPizza.CFrame = rootPart.CFrame * CFrame.new(0, 0, -2)
+                    local effect = createPizzaEffect(closestPizza, "TeleportEffect")
+                    task.delay(1, function()
+                        if effect and effect.Parent then
+                            effect:Destroy()
+                            pizzaEffects[closestPizza] = nil
+                        end
+                    end)
+                end
+                cleanUpEffects()
+            end)
+        end
+    end
+})
+
+PZ:AddDivider()  
+
+PZ:AddSlider("HealthThreshold", {
+    Text = "生命值",
+    Default = 50,
+    Min = 10,
+    Max = 130,
+    Rounding = 0,
+    Tooltip = "当生命值低于设置生命值吃披萨",
+    
+    Callback = function(value)
+        _G.HealthEatPizza = value
+    end
+})
+
+PZ:AddDivider()  
+
+PZ:AddButton("InstantAttract", {
+    Text = "将披萨送到脚下",
+    Func = function()
+        local player = Players.LocalPlayer
+        local character = player.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local rootPart = character.HumanoidRootPart
+            for _, pizza in ipairs(workspace:GetDescendants()) do
+                if pizza:IsA("BasePart") and pizza.Name == "Pizza" then
+                    pizza.CFrame = rootPart.CFrame
+                    break
+                end
+            end
+        end
+    end
+})
+
+local Misc = Tabs.Pizza:AddRightGroupbox('自动吃披萨［2］')
+
+Misc:AddSlider("HealthEatPizza",{
+Text = "生命值",
+Min = 1,
+Default = 50,
+Max = 50,
+Rounding = 1,
+Compact = true,
+Callback = function(v)
+_G.HealthEatPizza = v
+end})
+Misc:AddSlider("DistanceEatPizza",{
+Text = "距离范围",
+Min = 10,
+Default = 10,
+Max = 50,
+Rounding = 1,
+Compact = true,
+Callback = function(v)
+_G.DistanceEatPizza = v
+end})
+
+_G.HealthEatPizza = 50
+_G.DistanceEatPizza = 10
+
+Misc:AddToggle("AlwaysEatPizza",{
+Text = "自动吃披萨",
+Default = false,
+Callback = function(v)
+_G.AlwaysEatPizza = v
+game:GetService("RunService").RenderStepped:Connect(function()
+if _G.AlwaysEatPizza and workspace.Map:FindFirstChild("Ingame"):FindFirstChild("Pizza") then
+if game.Players.LocalPlayer.Character.Humanoid.Health < _G.HealthEatPizza and (workspace.Map:FindFirstChild("Ingame"):FindFirstChild("Pizza").Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < _G.DistanceEatPizza then
+workspace.Map:FindFirstChild("Ingame"):FindFirstChild("Pizza").Position = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
+end
+end
+end)
+end})
 
 local Generator = Tabs.Generator:AddLeftGroupbox("发动机")
 
@@ -9689,20 +9850,6 @@ Generator:AddButton("TeleportGenerator", {
     end
 })
 
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
 --[[ 问:为什么要维护传送发动机呢？
    答:因为有错别 所以正在维护中 我们会推出很好的来做比较
    
@@ -9736,29 +9883,7 @@ end
 
 --]]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("调试", "wrench")
+local MenuGroup = Tabs.Settings:AddLeftGroupbox("调试", "wrench")
 
 MenuGroup:AddToggle("KeybindMenuOpen", {
     Default = Library.KeybindFrame.Visible,
@@ -9820,7 +9945,8 @@ SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
 ThemeManager:SetFolder("LightStar")            
 SaveManager:SetFolder("LightStar/Game")  
 SaveManager:SetSubFolder("Forsaken")       
-SaveManager:BuildConfigSection(Tabs["UI Settings"])  
-ThemeManager:ApplyToTab(Tabs["UI Settings"])
+SaveManager:BuildConfigSection(Tabs.Settings)
+ThemeManager:ApplyToTab(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
+
