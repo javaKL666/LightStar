@@ -42,7 +42,7 @@ Library.ShowToggleFrameInKeybinds = true
 
 local Window = Library:CreateWindow({
 	Title = "LightStar",
-	Footer = "LightStar团队脚本-discord.gg/BW55cR7Z [可以去查看源码]",
+	Footer = "LightStar团队脚本-discord.gg/BW55cR7Z [来源Nolsaken]",
 	Icon = 106397684977541,
 	NotifySide = "Top-Right",
 	ShowCrosshair = false,
@@ -748,6 +748,8 @@ local ZZ = Tabs.Main:AddLeftGroupbox('自动狂暴[杰森]')
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 local savedRange = lp:FindFirstChild("RagingPaceRange")
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
 if not savedRange then
     savedRange = Instance.new("NumberValue")
     savedRange.Name = "RagingPaceRange"
@@ -755,19 +757,7 @@ if not savedRange then
     savedRange.Parent = lp
 end
 
-ZZ:AddSlider("RagingPaceRange", {
-    Text = "狂暴触发距离",
-    Default = savedRange.Value,
-    Min = 1,
-    Max = 50,
-    Rounding = 0,
-    Compact = true,
-    Callback = function(value)
-        savedRange.Value = value
-    end
-})
-
-ZZ:AddToggle("RagingPace", {
+ZZ:AddToggle("JasonAutoRagingPace", {
     Text = "自动狂暴",
     Default = false,
     Callback = function(enabled)
@@ -874,6 +864,18 @@ ZZ:AddToggle("RagingPace", {
                 _G.RagingPaceConnection = nil
             end
         end
+    end
+})
+
+ZZ:AddSlider("JasonAutoRagingPaceRange", {
+    Text = "狂暴触发距离",
+    Default = savedRange.Value,
+    Min = 1,
+    Max = 50,
+    Rounding = 0,
+    Compact = true,
+    Callback = function(value)
+        savedRange.Value = value
     end
 })
 
@@ -1026,9 +1028,9 @@ local function StopCFly()
     end
 end
 
-ZZ:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[危险]</font></b> 此功能对于玩家资源丰富的来说是最危险的")
+ZZ:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[危险]</font></b> 你可能会被挂到Discord 可能会被封禁")
 
-ZZ:AddToggle("CFlyToggle", {
+ZZ:AddToggle("CFly", {
     Text = "<b><font color=\"rgb(255, 0, 0)\">飞行</font></b>",
     Default = false,
     Callback = function(Value)
