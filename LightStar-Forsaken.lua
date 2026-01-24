@@ -122,7 +122,7 @@ local new = Tabs.new:AddLeftGroupbox('新闻','rocket')
 
 new:AddLabel("[+]开发 JackEyeKL")
 new:AddLabel("支持是我们的最大的贡献💩")
-new:AddLabel("脚本更新于1.20 晚上 8:55 时间")
+new:AddLabel("脚本更新于1.24 早上 8:15 时间")
 
 --[[
 local information = Tabs.new:AddLeftGroupbox('玩家 信息','info')
@@ -739,6 +739,140 @@ KillerSurvival:AddToggle("AntiHiddenStats", {
                     end)
                 end
             end)
+        end
+    end
+})
+
+local ZZ = Tabs.Main:AddLeftGroupbox('自动狂暴[杰森]')
+
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local savedRange = lp:FindFirstChild("RagingPaceRange")
+if not savedRange then
+    savedRange = Instance.new("NumberValue")
+    savedRange.Name = "RagingPaceRange"
+    savedRange.Value = 19
+    savedRange.Parent = lp
+end
+
+ZZ:AddSlider("RagingPaceRange", {
+    Text = "狂暴触发距离",
+    Default = savedRange.Value,
+    Min = 1,
+    Max = 50,
+    Rounding = 0,
+    Compact = true,
+    Callback = function(value)
+        savedRange.Value = value
+    end
+})
+
+ZZ:AddToggle("RagingPace", {
+    Text = "自动狂暴",
+    Default = false,
+    Callback = function(enabled)
+        local threadId = tostring(math.random(1, 99999))
+        _G.RagingPaceThreadId = threadId
+        
+        local function shouldContinue()
+            return _G.RagingPaceThreadId == threadId and enabled
+        end
+        
+        local RunService = game:GetService("RunService")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local RANGE = savedRange.Value
+        local SPAM_DURATION = 3
+        local COOLDOWN_TIME = 5
+        local activeCooldowns = {}
+
+        local animsToDetect = {
+            ["116618003477002"] = true,
+            ["119462383658044"] = true,
+            ["131696603025265"] = true,
+            ["121255898612475"] = true,
+            ["133491532453922"] = true,
+            ["103601716322988"] = true,
+            ["86371356500204"] = true,
+            ["72722244508749"] = true,
+            ["87259391926321"] = true,
+            ["96959123077498"] = true,
+        }
+
+        local function fireRagingPace()
+            local args = {
+                "UseActorAbility",
+                {
+                    buffer.fromstring("\"RagingPace\"")
+                }
+            }
+            ReplicatedStorage:WaitForChild("Modules")
+                :WaitForChild("Network")
+                :WaitForChild("RemoteEvent")
+                :FireServer(unpack(args))
+        end
+
+        local function isAnimationMatching(anim)
+            local id = tostring(anim.Animation and anim.Animation.AnimationId or "")
+            local numId = id:match("%d+")
+            return animsToDetect[numId] or false
+        end
+
+        local function runDetection()
+            local connection
+            connection = RunService.Heartbeat:Connect(function()
+                if not shouldContinue() then
+                    connection:Disconnect()
+                    return
+                end
+                
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if not shouldContinue() then break end
+                    
+                    if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local targetHRP = player.Character.HumanoidRootPart
+                        local myChar = lp.Character
+                        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                            local dist = (targetHRP.Position - myChar.HumanoidRootPart.Position).Magnitude
+                            if dist <= RANGE and (not activeCooldowns[player] or tick() - activeCooldowns[player] >= COOLDOWN_TIME) then
+                                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                                if humanoid then
+                                    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                                        if not shouldContinue() then break end
+                                        
+                                        if isAnimationMatching(track) then
+                                            activeCooldowns[player] = tick()
+                                            task.spawn(function()
+                                                local startTime = tick()
+                                                while shouldContinue() and tick() - startTime < SPAM_DURATION do
+                                                    fireRagingPace()
+                                                    task.wait(0.05)
+                                                end
+                                            end)
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+            
+            return connection
+        end
+
+        if enabled then
+            if _G.RagingPaceConnection then
+                _G.RagingPaceConnection:Disconnect()
+                _G.RagingPaceConnection = nil
+            end
+            
+            _G.RagingPaceConnection = runDetection()
+        else
+            if _G.RagingPaceConnection then
+                _G.RagingPaceConnection:Disconnect()
+                _G.RagingPaceConnection = nil
+            end
         end
     end
 })
@@ -2459,8 +2593,7 @@ local SpecialAimbot = Tabs.Aimbot:AddLeftGroupbox("角色自瞄(静默)")
 local defaultAimDistance = 100
 local aimDistanceSettings = {
     ChanceSilentAimbot = defaultAimDistance,
-    ShedletskySilentAimbot = defaultAimDistance,
-    Guest1337SilentAimbot = defaultAimDistance
+    ShedletskySilentAimbot = defaultAimDistance
 }
 
 -- 添加距离调节滑块
@@ -2483,17 +2616,6 @@ SpecialAimbot:AddSlider("ShedletskySilentAimbotDistance", {
     Rounding = 1,
     Callback = function(value)
         aimDistanceSettings.ShedletskySilentAimbot = value
-    end
-})
-
-SpecialAimbot:AddSlider("Guest1337SilentAimbotDistance", {
-    Text = "访客自瞄距离",
-    Default = defaultAimDistance,
-    Min = 10,
-    Max = 500,
-    Rounding = 1,
-    Callback = function(value)
-        aimDistanceSettings.Guest1337SilentAimbot = value
     end
 })
 
@@ -2577,43 +2699,6 @@ function AimSlashShedletsky(value)
     end
 end
 
-function AimAttackGuest(value)
-    local aimattackguest = value
-    if value then
-        aimguest = game:GetService("ReplicatedStorage").Modules.Network.RemoteEvent.OnClientEvent:Connect(function(eventName, eventArg)
-            if not aimattackguest then return end
-            if eventName == "UseActorAbility" and eventArg == "Punch" then
-                local targetkiller = game.Workspace.Players:FindFirstChild("Killers"):FindFirstChildOfClass("Model")
-                if targetkiller and targetkiller:FindFirstChild("HumanoidRootPart") then
-                    if game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        local distance = (targetkiller.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                        if distance <= aimDistanceSettings.GAA then
-                            local number = 1
-                            local connection
-                            connection = game:GetService("RunService").RenderStepped:Connect(function()
-                                if number <= 100 then
-                                    task.wait(0.01)
-                                    number = number + 1
-                                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.lookAt(
-                                        game.Players.LocalPlayer.Character.HumanoidRootPart.Position, 
-                                        targetkiller.HumanoidRootPart.Position
-                                    )
-                                else
-                                    connection:Disconnect()
-                                end
-                            end)
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if aimguest then
-            aimguest:Disconnect()
-        end
-    end
-end
-
 SpecialAimbot:AddToggle("ChanceSilentAimbot",{
     Text = "Chance自瞄",
     Callback = function(v)
@@ -2625,13 +2710,6 @@ SpecialAimbot:AddToggle("ShedletskySilentAimbot",{
     Text = "谢德自瞄",
     Callback = function(v)
         AimSlashShedletsky(v)
-    end
-})
-
-SpecialAimbot:AddToggle("Guest1337SilentAimbot",{
-    Text = "访客自瞄",
-    Callback = function(v)
-        AimAttackGuest(v)
     end
 })
 
@@ -5705,6 +5783,352 @@ Visual:AddToggle("EKE",{
     end
 })
 
+Visual:AddToggle("ShadowDetector", {
+    Text = "数码足迹ESP",
+    Default = false,
+    Callback = function(Value)
+        -- Define all variables and functions inside the callback to keep them contained
+        local currentShadows = {}
+        local checkingConnection = nil
+        local isRunning = false
+        local scriptConnection = nil
+
+        -- Recursive function to find all Shadow objects
+        local function findAllShadowsInFolder(folder)
+            local shadows = {}
+            for _, child in ipairs(folder:GetChildren()) do
+                if child.Name == "Shadow" then
+                    table.insert(shadows, child)
+                elseif child:IsA("Folder") or child:IsA("Model") then
+                    local foundShadows = findAllShadowsInFolder(child)
+                    for _, foundShadow in ipairs(foundShadows) do
+                        table.insert(shadows, foundShadow)
+                    end
+                end
+            end
+            return shadows
+        end
+
+        -- Create marker for a single Shadow
+        local function createShadowMarker(shadow)
+            local player = game.Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+            
+            local function getObjectSize(obj)
+                if obj:IsA("BasePart") then
+                    return obj.Size
+                elseif obj:IsA("Model") and obj.PrimaryPart then
+                    local cf = obj:GetBoundingBox()
+                    return (cf[2] - cf[1]).Magnitude
+                else
+                    return Vector3.new(5, 5, 5)
+                end
+            end
+            
+            local objectSize = getObjectSize(shadow)
+            
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "ShadowRangeIndicator"
+            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            highlight.FillTransparency = 0.8
+            highlight.OutlineColor = Color3.fromRGB(255, 100, 100)
+            highlight.OutlineTransparency = 0.5
+            highlight.Parent = shadow
+            
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "ShadowNameDisplay"
+            billboard.AlwaysOnTop = true
+            billboard.Size = UDim2.new(0, 180, 0, 60)
+            billboard.StudsOffset = Vector3.new(0, objectSize.Y/2 + 2, 0)
+            billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Name = "TrapLabel"
+            textLabel.Text = "TRAP"
+            textLabel.Size = UDim2.new(1, 0, 0.5, 0)
+            textLabel.Position = UDim2.new(0, 0, 0, 0)
+            textLabel.Font = Enum.Font.Arcade
+            textLabel.TextSize = 18
+            textLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            textLabel.BackgroundTransparency = 1
+            textLabel.TextStrokeTransparency = 0
+            textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+            textLabel.TextXAlignment = Enum.TextXAlignment.Center
+            textLabel.TextYAlignment = Enum.TextYAlignment.Center
+            
+            local distanceLabel = Instance.new("TextLabel")
+            distanceLabel.Name = "DistanceLabel"
+            distanceLabel.Text = "Distance: Calculating..."
+            distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+            distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+            distanceLabel.Font = Enum.Font.Arcade
+            distanceLabel.TextSize = 14
+            distanceLabel.TextColor3 = Color3.fromRGB(0, 255, 255)
+            distanceLabel.BackgroundTransparency = 1
+            distanceLabel.TextStrokeTransparency = 0
+            distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+            distanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+            distanceLabel.TextYAlignment = Enum.TextYAlignment.Center
+            
+            textLabel.Parent = billboard
+            distanceLabel.Parent = billboard
+            billboard.Parent = shadow
+            
+            if shadow:IsA("BasePart") then
+                local boxHandleAdornment = Instance.new("BoxHandleAdornment")
+                boxHandleAdornment.Name = "SizeIndicator"
+                boxHandleAdornment.Adornee = shadow
+                boxHandleAdornment.AlwaysOnTop = true
+                boxHandleAdornment.Size = shadow.Size
+                boxHandleAdornment.Transparency = 0.7
+                boxHandleAdornment.Color3 = Color3.fromRGB(255, 50, 50)
+                boxHandleAdornment.ZIndex = 10
+                boxHandleAdornment.Parent = shadow
+            end
+            
+            local heartbeatConnection
+            heartbeatConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                if not shadow or not shadow.Parent then 
+                    if heartbeatConnection then
+                        heartbeatConnection:Disconnect()
+                        heartbeatConnection = nil
+                    end
+                    return 
+                end
+                if not humanoidRootPart or not humanoidRootPart.Parent then return end
+                
+                local distance = (humanoidRootPart.Position - shadow.Position).Magnitude
+                distanceLabel.Text = string.format("Distance: %.1f m", distance)
+                
+                local baseScale = math.clamp(40 / math.max(1, distance), 0.4, 1.8)
+                textLabel.TextSize = 18 * baseScale
+                distanceLabel.TextSize = 14 * baseScale
+                
+                local overallTransparency = math.clamp(distance / 80, 0.1, 0.4)
+                local strokeTransparency = overallTransparency * 0.1
+                textLabel.TextStrokeTransparency = strokeTransparency
+                distanceLabel.TextStrokeTransparency = strokeTransparency
+                highlight.FillTransparency = math.clamp(distance/70, 0.3, 0.8)
+            end)
+            
+            currentShadows[shadow] = {
+                heartbeat = heartbeatConnection,
+                marker = {
+                    highlight = highlight,
+                    billboard = billboard,
+                    textLabel = textLabel,
+                    distanceLabel = distanceLabel,
+                    boxHandle = shadow:IsA("BasePart") and shadow:FindFirstChild("SizeIndicator")
+                }
+            }
+        end
+
+        -- Remove marker for a single Shadow
+        local function removeShadowMarker(shadow)
+            local markerData = currentShadows[shadow]
+            if markerData then
+                if markerData.heartbeat then
+                    markerData.heartbeat:Disconnect()
+                end
+                
+                if markerData.marker then
+                    if markerData.marker.highlight and markerData.marker.highlight.Parent then
+                        markerData.marker.highlight:Destroy()
+                    end
+                    if markerData.marker.billboard and markerData.marker.billboard.Parent then
+                        markerData.marker.billboard:Destroy()
+                    end
+                    if markerData.marker.boxHandle and markerData.marker.boxHandle.Parent then
+                        markerData.marker.boxHandle:Destroy()
+                    end
+                end
+                
+                currentShadows[shadow] = nil
+            end
+        end
+
+        -- Check and update Shadow markers
+        local function checkAndUpdateShadows()
+            local allFolders = {workspace.Map.Ingame}
+            local foundShadows = {}
+            
+            for _, folder in ipairs(allFolders) do
+                if folder and (folder:IsA("Folder") or folder:IsA("Model")) then
+                    local shadowsInFolder = findAllShadowsInFolder(folder)
+                    for _, shadow in ipairs(shadowsInFolder) do
+                        table.insert(foundShadows, shadow)
+                    end
+                end
+            end
+            
+            for _, shadow in ipairs(foundShadows) do
+                if not currentShadows[shadow] then
+                    createShadowMarker(shadow)
+                end
+            end
+            
+            local shadowsToRemove = {}
+            for shadow, _ in pairs(currentShadows) do
+                local stillExists = false
+                for _, foundShadow in ipairs(foundShadows) do
+                    if shadow == foundShadow then
+                        stillExists = true
+                        break
+                    end
+                end
+                
+                if not stillExists then
+                    table.insert(shadowsToRemove, shadow)
+                end
+            end
+            
+            for _, shadow in ipairs(shadowsToRemove) do
+                removeShadowMarker(shadow)
+            end
+        end
+
+        -- Start the detection system
+        local function startShadowChecking()
+            if isRunning then return end
+            isRunning = true
+            
+            checkAndUpdateShadows()
+            
+            checkingConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                -- Empty connection just to keep the script alive
+            end)
+            
+            scriptConnection = game:GetService("RunService").Stepped:Connect(function()
+                local success, _ = pcall(function()
+                    local test = script.Name
+                end)
+                
+                if not success then
+                    stopShadowChecking()
+                    if scriptConnection then
+                        scriptConnection:Disconnect()
+                        scriptConnection = nil
+                    end
+                end
+            end)
+            
+            task.spawn(function()
+                while isRunning do
+                    checkAndUpdateShadows()
+                    task.wait(2)
+                end
+            end)
+        end
+
+        -- Stop the detection system
+        local function stopShadowChecking()
+            if not isRunning then return end
+            isRunning = false
+            
+            if checkingConnection then
+                checkingConnection:Disconnect()
+                checkingConnection = nil
+            end
+            
+            if scriptConnection then
+                scriptConnection:Disconnect()
+                scriptConnection = nil
+            end
+            
+            for shadow, _ in pairs(currentShadows) do
+                removeShadowMarker(shadow)
+            end
+            
+            currentShadows = {}
+        end
+
+        -- Handle the toggle state
+        if Value then
+            startShadowChecking()
+        else
+            stopShadowChecking()
+        end
+    end
+})
+
+Visual:AddToggle("TWE", {
+    Text = "绊线绘制",
+    Default = false,
+    Callback = function(state)
+        if state then
+            -- 存储所有高亮对象的连接
+            _G.TWE_HighlightedObjects = _G.TWE_HighlightedObjects or {}
+            
+            -- 高亮现有绊线
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj.Name:match("TaphTripwire") and not obj:FindFirstChild("TWE_Highlight") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "TWE_Highlight"
+                    highlight.FillColor = Color3.fromRGB(102, 0, 153) -- 深紫色
+                    highlight.OutlineColor = Color3.fromRGB(102, 0, 153)
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    highlight.Parent = obj
+                    
+                    -- 监听对象移除
+                    _G.TWE_HighlightedObjects[obj] = obj.AncestryChanged:Connect(function(_, parent)
+                        if not parent and highlight and highlight.Parent then
+                            highlight:Destroy()
+                            if _G.TWE_HighlightedObjects[obj] then
+                                _G.TWE_HighlightedObjects[obj]:Disconnect()
+                                _G.TWE_HighlightedObjects[obj] = nil
+                            end
+                        end
+                    end)
+                end
+            end
+
+            -- 监听新增绊线
+            _G.TWE_Connection = workspace.DescendantAdded:Connect(function(obj)
+                if obj.Name:match("TaphTripwire") and not obj:FindFirstChild("TWE_Highlight") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "TWE_Highlight"
+                    highlight.FillColor = Color3.fromRGB(102, 0, 153)
+                    highlight.OutlineColor = Color3.fromRGB(102, 0, 153)
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0
+                    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    highlight.Parent = obj
+                    
+                    -- 监听对象移除
+                    _G.TWE_HighlightedObjects[obj] = obj.AncestryChanged:Connect(function(_, parent)
+                        if not parent and highlight and highlight.Parent then
+                            highlight:Destroy()
+                            if _G.TWE_HighlightedObjects[obj] then
+                                _G.TWE_HighlightedObjects[obj]:Disconnect()
+                                _G.TWE_HighlightedObjects[obj] = nil
+                            end
+                        end
+                    end)
+                end
+            end)
+        else
+            -- 禁用时清除所有高亮和连接
+            if _G.TWE_Connection then
+                _G.TWE_Connection:Disconnect()
+            end
+            
+            -- 清理所有高亮对象
+            for obj, connection in pairs(_G.TWE_HighlightedObjects or {}) do
+                if connection then
+                    connection:Disconnect()
+                end
+                if obj:FindFirstChild("TWE_Highlight") then
+                    obj.TWE_Highlight:Destroy()
+                end
+            end
+            _G.TWE_HighlightedObjects = {}
+        end
+    end
+})
+
 Visual:AddToggle("ST",{
 Text = "空间炸弹ESP",
 Callback = function(v)
@@ -6827,87 +7251,6 @@ ZZ:AddToggle("Guest1337AutoBlockVisualizationV1", {
     end)
 end)
 
-ZZ:AddToggle("Guest1337AutoPunch", {
-    Text = "自动拳击",
-    Default = false,
-    Callback = function(Value)
-        -- Define variables outside the callback to maintain state
-        if not _G.AutoPunchVars then
-            _G.AutoPunchVars = {
-                ReplicatedStorage = game:GetService("ReplicatedStorage"),
-                remoteEvent = nil,
-                isRunning = false,
-                connection = nil
-            }
-        end
-        
-        local vars = _G.AutoPunchVars
-        
-        -- Function to safely get the RemoteEvent
-        local function getRemoteEvent()
-            local success, result = pcall(function()
-                return vars.ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
-            end)
-            
-            if not success or not result then
-                warn("无法找到 RemoteEvent！请检查路径：ReplicatedStorage.Modules.Network.RemoteEvent")
-                return nil
-            end
-            return result
-        end
-        
-        -- Function to start sending punch events
-        local function startAutoPunch()
-            if vars.isRunning then return end
-            vars.isRunning = true
-            
-            -- Get the RemoteEvent if we don't have it yet
-            if not vars.remoteEvent then
-                vars.remoteEvent = getRemoteEvent()
-                if not vars.remoteEvent then
-                    warn("RemoteEvent 未初始化，无法发送事件。")
-                    vars.isRunning = false
-                    return
-                end
-            end
-            
-            -- Create the loop connection
-            vars.connection = task.spawn(function()
-                while vars.isRunning and Value do  -- Added Value check here
-local args = {
-	"UseActorAbility",
-	{
-		buffer.fromstring("\"Punch\"")
-	}
-}
-                    vars.remoteEvent:FireServer(unpack(args))
-                    task.wait(0.5)  -- Wait 0.5 seconds between punches
-                end
-                vars.isRunning = false
-            end)
-        end
-        
-        -- Function to stop sending punch events
-        local function stopAutoPunch()
-            if not vars.isRunning then return end
-            vars.isRunning = false
-            
-            -- Cancel the loop if it exists
-            if vars.connection then
-                task.cancel(vars.connection)
-                vars.connection = nil
-            end
-        end
-        
-        -- Handle the toggle state
-        if Value then
-            startAutoPunch()
-        else
-            stopAutoPunch()
-        end
-    end
-})
-
 getgenv().RS = game:GetService("ReplicatedStorage")
 getgenv().TS = game:GetService("TweenService")
 getgenv().RSvc = game:GetService("RunService")
@@ -7647,7 +7990,7 @@ pcall(function()
         end
     end
     
-    ZZ:AddToggle("AutoBlockToggle", {
+ZZ:AddToggle("007n7AutoClone", {
         Text = "自动分身",
         Default = false,
         Callback = function(enabled)
@@ -7666,7 +8009,7 @@ pcall(function()
         end
     })
     
-    ZZ:AddSlider("BaseDistance", {
+ZZ:AddSlider("007n7BaseDistance", {
         Text = "格挡距离",
         Default = 18,
         Min = 5,
@@ -7677,7 +8020,7 @@ pcall(function()
         end
     })
     
-    ZZ:AddSlider("TargetAngleSlider", {
+ZZ:AddSlider("007n7TargetAngle", {
         Text = "格挡角度",
         Default = 70,
         Min = 10,
@@ -7688,7 +8031,7 @@ pcall(function()
         end
     })
     
-    ZZ:AddToggle("VisualizationToggle", {
+ZZ:AddToggle("007n7Visualization", {
         Text = "可视化",
         Default = false,
         Callback = function(enabled)
@@ -7702,7 +8045,7 @@ pcall(function()
                 visualizationParts = {}
             end
         end
-    })
+})
     
     LocalPlayer.CharacterAdded:Connect(function()
         if config_007n7.Enabled and combatConnection then
@@ -7714,6 +8057,89 @@ pcall(function()
         end
     end)
 end)
+
+local ZZ = Tabs.Block:AddRightGroupbox('访客自动拳击')
+
+ZZ:AddToggle("Guest1337AutoPunch", {
+    Text = "自动拳击",
+    Default = false,
+    Callback = function(Value)
+        -- Define variables outside the callback to maintain state
+        if not _G.AutoPunchVars then
+            _G.AutoPunchVars = {
+                ReplicatedStorage = game:GetService("ReplicatedStorage"),
+                remoteEvent = nil,
+                isRunning = false,
+                connection = nil
+            }
+        end
+        
+        local vars = _G.AutoPunchVars
+        
+        -- Function to safely get the RemoteEvent
+        local function getRemoteEvent()
+            local success, result = pcall(function()
+                return vars.ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
+            end)
+            
+            if not success or not result then
+                warn("无法找到 RemoteEvent！请检查路径：ReplicatedStorage.Modules.Network.RemoteEvent")
+                return nil
+            end
+            return result
+        end
+        
+        -- Function to start sending punch events
+        local function startAutoPunch()
+            if vars.isRunning then return end
+            vars.isRunning = true
+            
+            -- Get the RemoteEvent if we don't have it yet
+            if not vars.remoteEvent then
+                vars.remoteEvent = getRemoteEvent()
+                if not vars.remoteEvent then
+                    warn("RemoteEvent 未初始化，无法发送事件。")
+                    vars.isRunning = false
+                    return
+                end
+            end
+            
+            -- Create the loop connection
+            vars.connection = task.spawn(function()
+                while vars.isRunning and Value do  -- Added Value check here
+local args = {
+	"UseActorAbility",
+	{
+		buffer.fromstring("\"Punch\"")
+	}
+}
+                    vars.remoteEvent:FireServer(unpack(args))
+                    task.wait(0.5)  -- Wait 0.5 seconds between punches
+                end
+                vars.isRunning = false
+            end)
+        end
+        
+        -- Function to stop sending punch events
+        local function stopAutoPunch()
+            if not vars.isRunning then return end
+            vars.isRunning = false
+            
+            -- Cancel the loop if it exists
+            if vars.connection then
+                task.cancel(vars.connection)
+                vars.connection = nil
+            end
+        end
+        
+        -- Handle the toggle state
+        if Value then
+            startAutoPunch()
+        else
+            stopAutoPunch()
+        end
+    end
+})
 
 local SM = Tabs.FightingKilling:AddLeftGroupbox('杀戮功能[杀手]')
 
