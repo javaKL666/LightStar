@@ -285,7 +285,7 @@ KillerSurvival:AddButton("FixLag", {
    end
 })
 
-local Warning = Tabs.NotificationListen:AddLeftGroupbox("杀手靠近提示")
+local Warning = Tabs.Main:AddLeftGroupbox("杀手靠近提示")
 
 -- 杀手靠近提示设置
 local KillerWarningSettings = {
