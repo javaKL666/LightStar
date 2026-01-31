@@ -1,7 +1,8 @@
 local CoreGui = game:GetService("StarterGui")
 -- =====游戏列表=====
 local GameList = {
-[6331902150] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/javaKL666/LightStar/refs/heads/main/LightStar-Forsaken.lua'))()",
+[6331902150] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/javaKL666/LightStar/refs/heads/main/LightStar-Forsaken.lua'))()", --被遗弃Forsaken
+[7344582593] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/javaKL666/LightStar/refs/heads/main/LightStar-DieOfDeath.lua'))()", --死亡之死DieOfDeath
 }
 _G.HoHoLoaded = true
 if getgenv().Key and GameListPre[game.GameId] ~= nil then
