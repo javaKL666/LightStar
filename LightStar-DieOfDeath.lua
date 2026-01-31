@@ -154,39 +154,11 @@ KillerSurvival:AddToggle("EnableSpeedBoost",{
     end
 })
 
-local cachedParts = {}
-function enableNoclip()
-    if localPlayer.Character then
-        for _, v in pairs(localPlayer.Character.GetChildren(localPlayer.Character)) do
-            if v:IsA("BasePart") then
-                cachedParts[v] = v
-                v.CanCollide = false
-            end
-        end
-    end
-end
-function disableNoclip()
-    for _, v in pairs(cachedParts) do
-        v.CanCollide = true
-    end
-end
-
 KillerSurvival:AddToggle("EnableNoclip", {
     Text = "启用穿墙",
     Default = false,
     Callback = function (s)
-        _G.noclipState = s
-        task.spawn(function ()
-            while task.wait() do
-                if not _G.noclipState then
-                    disableNoclip()
-                    break
-                end
-
-                enableNoclip()
-            end
-        end)
-    end
+  local Workspace = game:GetService("Workspace") local Players = game:GetService("Players") if NC then Clipon = true else Clipon = false end Stepped = game:GetService("RunService").Stepped:Connect(function() if not Clipon == false then for a, b in pairs(Workspace:GetChildren()) do if b.Name == Players.LocalPlayer.Name then for i, v in pairs(Workspace[Players.LocalPlayer.Name]:GetChildren()) do if v:IsA("BasePart") then v.CanCollide = false end end end end else Stepped:Disconnect() end end)
 })
 
 local Players = game:GetService("Players")
