@@ -155,22 +155,13 @@ setclipboard("798979110")
 
 --]]
 
-local Team = Tabs.new:AddRightGroupbox('组织','apple')
-
-Team:AddButton({
-    Text = "复制 LightStar 企鹅群 ①",
-    Func = function ()
-setclipboard("798979110")
-       end
-})
-
-Team:AddButton({
-    Text = "复制 LightStar Discord 频道链接",
-    Func = function ()
-setclipboard("https://discord.gg/BW55cR7Z")
-       end
-})
-
+local information = Tabs.new:AddRightGroupbox('信息','info')
+information:AddLabel("Hello亲爱的使用LightStar者")
+information:AddLabel("这个服务器脚本停更")
+information:AddLabel("我不是跑路了")
+information:AddLabel("我的账号已封禁")
+information:AddLabel("我正在制作其他新的服务器脚本")
+information:AddLabel("谢谢你的观看")
 --]]
 
 -- Nolsaken团队遗憾走了之后才能开放的公告🤫🤫🤫 当时Nolsaken群聊散的时候 我以为真跑路了 不准给我公开 公开的人斯浮木和全家😂😂
@@ -2207,19 +2198,6 @@ end
 -- 杀手UI
 local SC = Tabs.Aimbot:AddRightGroupbox('杀手')
 
--- 1x4自瞄距离滑块
-SC:AddSlider('1X4AimbotDistance', {
-    Text = '1x4自瞄距离',
-    Default = 50,
-    Min = 10,
-    Max = 150,
-    Rounding = 1,
-    Compact = false,
-    Callback = function(value)
-        x1x4MaxDistance = value
-    end
-})
-
 -- 小孩自瞄距离滑块
 SC:AddSlider('c00lkiddAimbotDistance', {
     Text = '酷小孩自瞄距离',
@@ -2260,77 +2238,6 @@ SC:AddSlider('JasonAimbotDistance', {
 })
 
 -- 杀手自瞄功能
-local function aimbot1x1x1x1(state)
-    local aimbot1x1sounds = {
-        "rbxassetid://101593173978979",
-        "rbxassetid://72296288942160"
-    }
-    
-    aimbot1x1 = state
-    
-    if game:GetService("Players").LocalPlayer.Character.Name ~= "1x1x1x1" and state then
-        Library:Notify("你的角色不是1x4 无法生效", nil, 4590657391)
-        return 
-    end
-
-    if state then
-        aimbot1x1loop = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.ChildAdded:Connect(function(child)
-            if not aimbot1x1 then return end
-            for _, v in pairs(aimbot1x1sounds) do
-                if child.Name == v then
-                    local survivors = {}
-                    for _, player in pairs(game:GetService("Players"):GetPlayers()) do
-                        if player ~= game:GetService("Players").LocalPlayer then
-                            local character = player.Character
-                            if character and character:FindFirstChild("HumanoidRootPart") then
-                                table.insert(survivors, character)
-                            end
-                        end
-                    end
-
-                    local nearestSurvivor = nil
-                    local shortestDistance = math.huge  
-                    
-                    for _, survivor in pairs(survivors) do
-                        local survivorHRP = survivor.HumanoidRootPart
-                        local playerHRP = game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        
-                        if playerHRP then
-                            local distance = (survivorHRP.Position - playerHRP.Position).Magnitude
-                            if distance < shortestDistance and distance <= x1x4MaxDistance then
-                                shortestDistance = distance
-                                nearestSurvivor = survivor
-                            end
-                        end
-                    end
-                    
-                    if nearestSurvivor then
-                        local nearestHRP = nearestSurvivor.HumanoidRootPart
-                        local playerHRP = game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        
-                        if playerHRP then
-                            local direction = (nearestHRP.Position - playerHRP.Position).Unit
-                            local num = 1
-                            local maxIterations = 100 
-                            
-                            while num <= maxIterations do
-                                task.wait(0.01)
-                                num = num + 1
-                                workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, nearestHRP.Position)
-                                playerHRP.CFrame = CFrame.lookAt(playerHRP.Position, Vector3.new(nearestHRP.Position.X, nearestHRP.Position.Y, nearestHRP.Position.Z))
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if aimbot1x1loop then
-            aimbot1x1loop:Disconnect()
-            aimbot1x1loop = nil
-        end
-    end
-end
 
 local function cool(state)
     local coolsounds = {
@@ -2565,12 +2472,6 @@ SB:AddToggle('ShedletskyAimbot', {
 })
 
 -- 杀手UI
-SC:AddToggle('1x1x1x1Aimbot', {
-    Text = '1x4自瞄',
-    Default = false,
-    Callback = aimbot1x1x1x1
-})
-
 SC:AddToggle('c00lkiddAimbot', {
     Text = '酷小孩自瞄',
     Default = false,
@@ -4305,7 +4206,7 @@ Visual:AddToggle("KillerHealth", {
     Title = "杀手血量(文字)颜色",
 })
 
-local Visual   = Tabs.Esp:AddLeftGroupbox('发动机ESP')
+local Visual   = Tabs.Esp:AddLeftGroupbox('发动机ESP[可能有卡顿]')
 -- 真发动机ESP
 Visual:AddToggle("RealGeneratorESP", {
     Text = "ESP真发动机",
@@ -5847,7 +5748,7 @@ Visual:AddToggle("ShadowDetector", {
             
             local textLabel = Instance.new("TextLabel")
             textLabel.Name = "TrapLabel"
-            textLabel.Text = "TRAP"
+            textLabel.Text = "数码足迹"
             textLabel.Size = UDim2.new(1, 0, 0.5, 0)
             textLabel.Position = UDim2.new(0, 0, 0, 0)
             textLabel.Font = Enum.Font.Arcade
@@ -5861,7 +5762,7 @@ Visual:AddToggle("ShadowDetector", {
             
             local distanceLabel = Instance.new("TextLabel")
             distanceLabel.Name = "DistanceLabel"
-            distanceLabel.Text = "Distance: Calculating..."
+            distanceLabel.Text = "距离: 计算中..."
             distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
             distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
             distanceLabel.Font = Enum.Font.Arcade
@@ -5901,7 +5802,7 @@ Visual:AddToggle("ShadowDetector", {
                 if not humanoidRootPart or not humanoidRootPart.Parent then return end
                 
                 local distance = (humanoidRootPart.Position - shadow.Position).Magnitude
-                distanceLabel.Text = string.format("Distance: %.1f m", distance)
+                distanceLabel.Text = string.format("距离: %.1f m", distance)
                 
                 local baseScale = math.clamp(40 / math.max(1, distance), 0.4, 1.8)
                 textLabel.TextSize = 18 * baseScale
@@ -6055,7 +5956,7 @@ Visual:AddToggle("ShadowDetector", {
 })
 
 Visual:AddToggle("TWE", {
-    Text = "绊线绘制",
+    Text = "绊线ESP",
     Default = false,
     Callback = function(state)
         if state then
