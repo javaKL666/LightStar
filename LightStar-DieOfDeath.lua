@@ -250,7 +250,312 @@ KillerSurvival:AddButton("FixLag", {
    end
 })
 
-local Warning = Tabs.Main:AddLeftGroupbox("杀手靠近提示")
+local ZZ = Tabs.Main:AddLeftGroupbox('<b><font color=\"rgb(255, 0, 0)\">飞行[最危险]</font></b>','cpu')
+
+local RunService = game:GetService("RunService") --获取玩家操控位置函数
+local CFSpeed = 50
+local CFLoop = nil
+
+local function StartCFly()
+    local speaker = game.Players.LocalPlayer
+    local character = speaker.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass('Humanoid')
+    local head = character:WaitForChild("Head")
+    
+    if not humanoid or not head then return end
+    
+    humanoid.PlatformStand = true
+    head.Anchored = true
+    
+    if CFLoop then 
+        CFLoop:Disconnect() 
+        CFLoop = nil
+    end
+    
+    CFLoop = RunService.Heartbeat:Connect(function(deltaTime)
+        if not character or not humanoid or not head then 
+            if CFLoop then 
+                CFLoop:Disconnect() 
+                CFLoop = nil
+            end
+            return 
+        end
+        
+        local moveDirection = humanoid.MoveDirection * (CFSpeed * deltaTime)
+        local headCFrame = head.CFrame
+        local camera = workspace.CurrentCamera
+        local cameraCFrame = camera.CFrame
+        local cameraOffset = headCFrame:ToObjectSpace(cameraCFrame).Position
+        cameraCFrame = cameraCFrame * CFrame.new(-cameraOffset.X, -cameraOffset.Y, -cameraOffset.Z + 1)
+        local cameraPosition = cameraCFrame.Position
+        local headPosition = headCFrame.Position
+
+        local objectSpaceVelocity = CFrame.new(cameraPosition, Vector3.new(headPosition.X, cameraPosition.Y, headPosition.Z)):VectorToObjectSpace(moveDirection)
+        head.CFrame = CFrame.new(headPosition) * (cameraCFrame - cameraPosition) * CFrame.new(objectSpaceVelocity)
+    end)
+end
+
+local function StopCFly()
+    local speaker = game.Players.LocalPlayer
+    local character = speaker.Character
+    
+    if CFLoop then
+        CFLoop:Disconnect()
+        CFLoop = nil
+    end
+    
+    if character then
+        local humanoid = character:FindFirstChildOfClass('Humanoid')
+        local head = character:FindFirstChild("Head")
+        
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+        if head then
+            head.Anchored = false
+        end
+    end
+end
+
+ZZ:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[危险]</font></b> 你可能会被挂到Discord 可能会被封禁")
+
+ZZ:AddToggle("CFly", {
+    Text = "<b><font color=\"rgb(255, 0, 0)\">飞行</font></b>",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            StartCFly()
+        else
+            StopCFly()
+        end
+    end
+})
+
+ZZ:AddSlider("CFlySpeed", {
+    Text = "<font color=\"rgb(255, 0, 0)\">飞行速度</font>",
+    Default = 50,
+    Min = 1,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(Value)
+        CFSpeed = Value
+    end
+})
+
+local FunGroup = Tabs.Main:AddLeftGroupbox("后空翻","rbxthumb://type=Asset&id=2714338264&w=150&h=150")
+
+local ff_connection = nil
+local ff_enabled = false
+local ff_cd = false
+local jumpHeight = 72  -- 默认高度: 6 * 12 = 72
+local jumpDistance = 35  -- 默认距离
+
+local function Flip()
+    if ff_cd then
+        return
+    end
+    ff_cd = true
+    local character = game.Players.LocalPlayer.Character
+    if not character then
+        ff_cd = false
+        return
+    end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    local Humanoid = character:FindFirstChildOfClass("Humanoid")
+    local animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
+    if not hrp or not Humanoid then
+        ff_cd = false
+        return
+    end
+    local savedTracks = {}
+    if animator then
+        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+            savedTracks[#savedTracks + 1] = { track = track, time = track.TimePosition }
+            track:Stop(0)
+        end
+    end
+    Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+    local duration = 0.45
+    local steps = 120
+    local startCFrame = hrp.CFrame
+    local forwardVector = startCFrame.LookVector
+    local upVector = Vector3.new(0, 1, 0)
+    task.spawn(function()
+        local startTime = tick()
+        for i = 1, steps do
+            local t = i / steps
+            local height = jumpHeight * (t - t ^ 2)  -- 使用滑块调节的高度
+            local nextPos = startCFrame.Position + forwardVector * (jumpDistance * t) + upVector * height    
+            local rotation = startCFrame.Rotation * CFrame.Angles(-math.rad(i * (360 / steps)), 0, 0)
+
+            hrp.CFrame = CFrame.new(nextPos) * rotation
+            local elapsedTime = tick() - startTime
+            local expectedTime = (duration / steps) * i
+            local waitTime = expectedTime - elapsedTime
+            if waitTime > 0 then
+                task.wait(waitTime)
+            end
+        end
+
+        hrp.CFrame = CFrame.new(startCFrame.Position + forwardVector * jumpDistance) * startCFrame.Rotation
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+        Humanoid:ChangeState(Enum.HumanoidStateType.Running)
+
+        if animator then
+            for _, data in ipairs(savedTracks) do
+                local track = data.track
+                track:Play()
+                track.TimePosition = data.time
+            end
+        end
+        task.wait(0.25)
+        ff_cd = false
+    end)
+end
+
+local sausageHolder = nil
+local originalSize = nil
+local ff_button = nil
+
+local function SetFrontFlip(bool)
+    ff_enabled = bool
+    if ff_enabled == true then
+        pcall(function()
+            sausageHolder = game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.UnibarMenu["2"]
+            originalSize = sausageHolder.Size.X.Offset
+            ff_button = Instance.new("Frame", sausageHolder)
+            ff_button.Size = UDim2.new(0, 48, 0, 44)
+            ff_button.BackgroundTransparency = 1
+            ff_button.BorderSizePixel = 0
+            ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset - 48, 0, 0)
+            
+            local imageButton = Instance.new("ImageButton", ff_button)
+            imageButton.BackgroundTransparency = 1
+            imageButton.BorderSizePixel = 0
+            imageButton.Size = UDim2.new(0, 36, 0, 36)
+            imageButton.AnchorPoint = Vector2.new(0.5, 0.5)
+            imageButton.Position = UDim2.new(0.5, 0, 0.5, 0)
+            imageButton.Image = "rbxthumb://type=Asset&id=2714338264&w=150&h=150"
+            
+            ff_connection = imageButton.Activated:Connect(Flip)
+            sausageHolder.Size = UDim2.new(0, originalSize + 48, 0, sausageHolder.Size.Y.Offset)
+            task.wait()
+            ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset - 48, 0, 0)
+            
+            task.spawn(function()
+                pcall(function()
+                    repeat
+                        sausageHolder.Size = UDim2.new(0, originalSize + 48, 0, sausageHolder.Size.Y.Offset)
+                        task.wait()
+                        ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset - 48, 0, 0)
+                    until ff_enabled == false
+                end)
+            end)
+        end)
+    elseif ff_enabled == false then
+        if ff_connection then
+            ff_connection:Disconnect()
+            ff_connection = nil
+        end
+        if ff_button then
+            ff_button:Destroy()
+            ff_button = nil
+        end
+        if sausageHolder then
+            sausageHolder.Size = UDim2.new(0, originalSize, 0, sausageHolder.Size.Y.Offset)
+        end
+    end
+end
+
+FunGroup:AddToggle("FrontFlipButton", {
+    Text = "显示后空翻按钮",
+    Default = false,
+    Callback = function(Value)
+        SetFrontFlip(Value)
+    end
+})
+
+FunGroup:AddSlider("FrontFlipJumpHeight", {
+    Text = "跳跃高度",
+    Default = 72,
+    Min = 20,
+    Max = 200,
+    Rounding = 0,
+    Compact = false,
+    Callback = function(Value)
+        jumpHeight = Value
+    end
+})
+
+FunGroup:AddSlider("FrontFlipJumpDistance", {
+    Text = "跳跃距离",
+    Default = 35,
+    Min = 10,
+    Max = 100,
+    Rounding = 0,
+    Compact = false,
+    Callback = function(Value)
+        jumpDistance = Value
+    end
+})
+
+local MainTabbox = Tabs.Main:AddRightTabbox()
+local Camera = MainTabbox:AddTab("相机")
+
+Camera:AddToggle('FreeZoom', {
+    Text = "自由缩放",
+    Callback = function(state)
+        localPlayer.CameraMaxZoomDistance = state and math.huge or 12
+    end
+})
+
+Camera:AddToggle('CameraNoclip', {
+    Text = "相机穿墙",
+    Callback = function(state)
+        localPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode[state and "Invisicam" or "Zoom"]
+    end
+})
+
+Camera:AddDivider()
+
+Camera:AddSlider("FieldOfViewValue",{
+    Text = "视野调节",
+    Min = 70,
+    Default = 70,
+    Max = 120,
+    Rounding = 1,
+    Compact = true,
+    Callback = function(v)
+        _env.FieldOfViewValue = v
+    end
+})
+
+_G.FieldOfViewValue = 70
+
+Camera:AddToggle("EnableFieldOfView",{
+    Text = "应用视野",
+    Callback = function(v)
+        _env.FOV = v
+        game:GetService("RunService").RenderStepped:Connect(function()
+            if _env.FOV then
+                workspace.Camera.FieldOfView = _env.FieldOfViewValue
+            end
+        end)
+    end
+})
+
+local Warning = Tabs.Main:AddRightGroupbox("杀手靠近提示")
 
 -- 杀手靠近提示设置
 local KillerWarningSettings = {
@@ -396,51 +701,6 @@ Warning:AddDropdown("WarningColor", {
         }
         KillerWarningSettings.WarningColor = colorMap[value] or Color3.fromRGB(255, 0, 0)
         warningLabel.Color = KillerWarningSettings.WarningColor
-    end
-})
-
-local MainTabbox = Tabs.Main:AddRightTabbox()
-local Camera = MainTabbox:AddTab("相机")
-
-Camera:AddToggle('FreeZoom', {
-    Text = "自由缩放",
-    Callback = function(state)
-        localPlayer.CameraMaxZoomDistance = state and math.huge or 12
-    end
-})
-
-Camera:AddToggle('CameraNoclip', {
-    Text = "相机穿墙",
-    Callback = function(state)
-        localPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode[state and "Invisicam" or "Zoom"]
-    end
-})
-
-Camera:AddDivider()
-
-Camera:AddSlider("FieldOfViewValue",{
-    Text = "视野调节",
-    Min = 70,
-    Default = 70,
-    Max = 120,
-    Rounding = 1,
-    Compact = true,
-    Callback = function(v)
-        _env.FieldOfViewValue = v
-    end
-})
-
-_G.FieldOfViewValue = 70
-
-Camera:AddToggle("EnableFieldOfView",{
-    Text = "应用视野",
-    Callback = function(v)
-        _env.FOV = v
-        game:GetService("RunService").RenderStepped:Connect(function()
-            if _env.FOV then
-                workspace.Camera.FieldOfView = _env.FieldOfViewValue
-            end
-        end)
     end
 })
 
