@@ -36,7 +36,7 @@ local Window = Library:CreateWindow({
 })
 
 local Tabs = {
-    new = Window:AddTab('公告','external-link','公告&信息'),
+    new = Window:AddTab('主持','external-link','公告&信息'),
     Main = Window:AddTab('玩家','user','这是主要的!!!'),
     Esp = Window:AddTab('ESP','scan-eye','让你能够透视他们!!!'),
     --[[
@@ -51,11 +51,13 @@ local Tabs = {
 local _env = getgenv and getgenv() or {}
 local _hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
 
+--[[
 local new = Tabs.new:AddLeftGroupbox('新闻','rocket')
 
 new:AddLabel("[+]开发 JackEyeKL")
-new:AddLabel("支持是我们的最大的贡献💩")
+new:AddLabel("支持是我们的最大的贡献😜")
 new:AddLabel("脚本更新于1.31 晚上 10:42 时间")
+--]]
 
 --[[
 local information = Tabs.new:AddLeftGroupbox('玩家 信息','info')
@@ -67,26 +69,60 @@ information:AddLabel("昵称 : "..game.Players.LocalPlayer.DisplayName)
 information:AddLabel("用户年龄 : "..game.Players.LocalPlayer.AccountAge.." 天")
 --]]
 
+local information = Tabs.new:AddLeftGroupbox('信息','info')
+
+    local Players = game:GetService('Players')
+    local player = Players.LocalPlayer
+    local avatarImage = information:AddImage('AvatarThumbnail', {
+        Image = 'rbxassetid://0',
+        Callback = function(image)
+            print('Image changed!', image)
+        end,
+    })
+
+    task.spawn(function()
+        repeat
+            task.wait()
+        until player
+
+        task.wait(1)
+
+        local success, thumbnail = pcall(function()
+            return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size180x180)
+        end)
+
+        if (success and thumbnail) then
+            avatarImage:SetImage(thumbnail)
+        else
+            local alternatives = {
+                Enum.ThumbnailType.AvatarThumbnail,
+                Enum.ThumbnailType.AvatarBust,
+                Enum.ThumbnailType.Avatar,
+            }
+
+            for _, thumbnailType in ipairs(alternatives)do
+                local altSuccess, altThumbnail = pcall(function()
+                    return Players:GetUserThumbnailAsync(player.UserId, thumbnailType, Enum.ThumbnailSize.Size180x180)
+                end)
+
+                if (altSuccess and altThumbnail) then
+                    avatarImage:SetImage(altThumbnail)
+
+                    break
+                end
+            end
+        end
+    end)
+    
+information:AddDivider()
+
+information:AddLabel("欢迎LightStar者用户")
+information:AddLabel("支持是我们的最大的贡献😜")
+
+information:AddDivider()
+
+information:AddLabel("执行器 : " ..identifyexecutor())
 --[[
-local Team = Tabs.new:AddLeftGroupbox('聊','external-link')
-
-Team:AddButton({
-    Text = "复制 LightStar Discord 链接",
-    Func = function ()
-setclipboard("https://discord.gg/BW55cR7Z")
-       end
-})
-
-Team:AddDivider()
-
-Team:AddButton({
-    Text = "复制 LightStar 企鹅群 ①",
-    Func = function ()
-setclipboard("798979110")
-       end
-})
-
---]]
 
 local information = Tabs.new:AddRightGroupbox('信息','info')
 
@@ -97,12 +133,13 @@ information:AddLabel("我的账号已封禁")
 information:AddLabel("我正在制作其他新的服务器脚本")
 information:AddLabel("谢谢你的观看！！！")
 
---[[
-local Contributor = Tabs.new:AddRightGroupbox('贡献者')
+--]]
+
+local Contributor = Tabs.new:AddRightGroupbox('鸣谢&贡献者')
 
 Contributor:AddLabel("[<b><font color=\"rgb(0, 0, 255)\">JackEyeKL</font></b>] - 脚本所有者")
 
-Contributor:AddLabel("[<b><font color=\"rgb(128, 0, 128)\">宇星辰丫</font></b>] - 提供Nol原脚本终极源码")
+Contributor:AddLabel("[<b><font color=\"rgb(128, 0, 128)\">Yuxingchen</font></b>] - 提供Nol原脚本终极源码")
 
 local LightStar = Tabs.new:AddRightGroupbox('日志','users')
 
@@ -250,7 +287,7 @@ KillerSurvival:AddButton("FixLag", {
    end
 })
 
-local ZZ = Tabs.Main:AddLeftGroupbox('<b><font color=\"rgb(255, 0, 0)\">飞行[最危险]</font></b>','cpu')
+local ZZ = Tabs.Main:AddLeftGroupbox('飞行[仅限自己可见]','cpu')
 
 local RunService = game:GetService("RunService") --获取玩家操控位置函数
 local CFSpeed = 50
@@ -319,10 +356,8 @@ local function StopCFly()
     end
 end
 
-ZZ:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[危险]</font></b> 你可能会被挂到Discord 可能会被封禁")
-
 ZZ:AddToggle("CFly", {
-    Text = "<b><font color=\"rgb(255, 0, 0)\">飞行</font></b>",
+    Text = "飞行",
     Default = false,
     Callback = function(Value)
         if Value then
@@ -334,7 +369,7 @@ ZZ:AddToggle("CFly", {
 })
 
 ZZ:AddSlider("CFlySpeed", {
-    Text = "<font color=\"rgb(255, 0, 0)\">飞行速度</font>",
+    Text = "飞行速度",
     Default = 50,
     Min = 1,
     Max = 200,
@@ -510,6 +545,156 @@ FunGroup:AddSlider("FrontFlipJumpDistance", {
     end
 })
 
+local AutoBlock = Tabs.Main:AddLeftGroupbox("自动格挡")
+
+--// 服务
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local lp = Players.LocalPlayer
+--// 格挡设置
+local BLOCK_DISTANCE = 15
+local watcherEnabled = true
+--// 远程
+local UseAbility = ReplicatedStorage:WaitForChild("Events"):WaitForChild("RemoteFunctions"):WaitForChild("UseAbility")
+--// 杀手配置
+
+local KillerConfigs = {
+    ["Pursuer"] = {
+        enabled = false,
+        check = function(_, ws)
+            local valid = {4,6,8,10,12,14,16,20}
+            for _, v in ipairs(valid) do if ws == v then return true end end
+            return false
+        end
+    },
+    ["Artful"] = {
+        enabled = false,
+        check = function(_, ws)
+            local valid = {4,8,12,16,20,9,13,17,21}
+            for _, v in ipairs(valid) do if ws == v then return true end end
+            return false
+        end
+    },
+    ["Badware"] = {
+        enabled = false,
+        check = function(_, ws)
+            local valid = {4,8,12,16,20,24}
+            for _, v in ipairs(valid) do if ws == v then return true end end
+            return false
+        end
+    },
+    ["Harken"] = {
+        enabled = false,
+        check = function(playerFolder, ws)
+            local enraged = playerFolder:GetAttribute("Enraged")
+            if enraged then
+                local seq = {7.5,13.5,17.5,21.5,25.5}
+                for _, v in ipairs(seq) do if ws == v then return true end end
+            else
+                local seq = {4,8,12,16,20}
+                for _, v in ipairs(seq) do if ws == v then return true end end
+            end
+            return false
+        end
+    },
+    ["Killdroid"] = {
+        enabled = false,
+        check = function(_, ws)
+            local valid = {-4,0,4,12,16,20}
+            for _, v in ipairs(valid) do if ws == v then return true end end
+            return false
+        end
+    }
+}
+
+--// 助手
+local function sendBlock()
+    local args = {"Block"}
+    UseAbility:InvokeServer(unpack(args))
+end
+local function getWalkSpeedModifier(killer)
+    local val = killer:GetAttribute("WalkSpeedModifier")
+    if val then return val end
+    return 0
+end
+
+local function getDistanceFromPlayer(killer)
+    if killer:FindFirstChild("HumanoidRootPart") and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        return (killer.HumanoidRootPart.Position - lp.Character.HumanoidRootPart.Position).Magnitude
+    end
+    return math.huge
+end
+
+--// Tab选项设置日常
+local Logged = {}
+--// 主要检查
+local function checkAndBlock(killer)
+    if not watcherEnabled then return end
+    if not killer then return end
+    local ws = getWalkSpeedModifier(killer)
+    local name = killer:GetAttribute("KillerName")
+    if not name then return end
+    local config = KillerConfigs[name]
+    if not config or not config.enabled then return end
+    if getDistanceFromPlayer(killer) > BLOCK_DISTANCE then return end
+    if config.check(killer, ws) then
+        sendBlock()
+        Logged[killer] = Logged[killer] or {}
+        if not Logged[killer][ws] then
+            print("[自动格挡] "..name.." ("..killer.Name..") 运行工作 = "..ws.." -> 格挡回弹ed")
+            Logged[killer][ws] = true
+            task.delay(3, function()
+                Logged[killer][ws] = nil
+            end)
+        end
+    end
+end
+
+--// 检查杀手攻击
+local function monitorKiller(killer)
+    if not killer then return end
+    checkAndBlock(killer)
+    killer.AttributeChanged:Connect(function(attr)
+        if attr == "WalkSpeedModifier" or attr == "KillerName" or attr == "Enraged" then
+            checkAndBlock(killer)
+        end
+    end)
+end
+
+--// Hook 杀手文件夹
+
+local killersFolder = workspace:WaitForChild("GameAssets"):WaitForChild("Teams"):WaitForChild("Killer")
+for _, killer in pairs(killersFolder:GetChildren()) do
+    monitorKiller(killer)
+end
+
+killersFolder.ChildAdded:Connect(monitorKiller)
+
+for killerName, cfg in pairs(KillerConfigs) do
+
+AutoBlock:AddToggle("EnableAutoBlock", {
+    Text = "启用 ("..killerName..") 的杀手角色格挡",
+    Default = cfg.enabled, 
+    Callback = function(val)
+        cfg.enabled = val
+    end
+})
+
+end
+
+AutoBlock:AddSlider("AutoBlockDistance", {
+    Text = "格挡距离", 
+    Min = 5,                
+    Max = 50,             
+    Rounding = 0,          
+    Default = BLOCK_DISTANCE, 
+    Compact = false,        
+    Callback = function(val)
+        BLOCK_DISTANCE = val
+    end
+})
+
 local MainTabbox = Tabs.Main:AddRightTabbox()
 local Camera = MainTabbox:AddTab("相机")
 
@@ -554,6 +739,226 @@ Camera:AddToggle("EnableFieldOfView",{
         end)
     end
 })
+
+local Skill = Tabs.Main:AddRightGroupbox("能力")
+
+local ReplicatedStorage = ReplicatedStorage or game:GetService("ReplicatedStorage")
+local lp = lp or game:GetService("Players").LocalPlayer
+
+local skillList = {"Revolver","Punch","Block","Caretaker","Hotdog","Taunt","Cloak","Dash","Banana","BonusPad","Adrenaline"}
+local selectedSkill1, selectedSkill2 = "Revolver", "Caretaker"
+
+--[[
+Skill:AddDropdown("SelectSkill1", {
+    Text = "选择技能 1", 
+    Values = skillList,      
+    Default = 1,             
+    Multi = false,          
+    Callback = function(selectedIndex)
+        selectedSkill1 = skillList[selectedIndex] 
+    end
+})
+
+Skill:AddDropdown("SelectSkill2", {
+    Values = skillList,
+    Default = 1,
+    Multi = false,
+    Text = "选择技能 2",
+    Callback = function(selectedIndex)
+        selectedSkill2 = skillList[selectedIndex]
+    end
+})
+
+Skill:AddButton("SelectSkillsutton", {
+    Text = "选择技能",
+    Func = function()
+        local abilitySelection = ReplicatedStorage:WaitForChild("Events"):WaitForChild("RemoteEvents"):WaitForChild("AbilitySelection")
+        abilitySelection:FireServer({selectedSkill1, selectedSkill2})
+    end
+})
+--]]
+
+-- Skill GUI (draggable buttons)
+local SkillsModule = require(ReplicatedStorage.ClientModules:WaitForChild("AbilityConfig"))
+local guiStorage = lp:FindFirstChild("SkillScreenGui") or Instance.new("ScreenGui")
+guiStorage.Name = "SkillScreenGui"
+guiStorage.ResetOnSpawn = false
+guiStorage.IgnoreGuiInset = true
+guiStorage.Parent = lp:WaitForChild("PlayerGui")
+
+local buttonConfigs = {} -- [skillName] = {size,pos}
+local lastUsed = {}      -- [skillName] = os.clock()
+
+-- Make GUI draggable
+local function makeDraggable(frame, skillName)
+    local dragging, dragStart, startPos = false, Vector2.new(), frame.Position
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+delta.X, startPos.Y.Scale, startPos.Y.Offset+delta.Y)
+    end
+
+    local function onInputBegan(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    buttonConfigs[skillName].pos = {frame.Position.X.Offset, frame.Position.Y.Offset}
+                end
+            end)
+        end
+    end
+
+    local function onInputChanged(input)
+        if dragging and (input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
+            update(input)
+        end
+    end
+
+    frame.InputBegan:Connect(onInputBegan)
+    frame.InputChanged:Connect(onInputChanged)
+
+    for _, child in ipairs(frame:GetDescendants()) do
+        if child:IsA("GuiObject") then
+            child.InputBegan:Connect(onInputBegan)
+            child.InputChanged:Connect(onInputChanged)
+        end
+    end
+end
+
+-- Create skill button
+local function createSkillButton(skillName)
+    local skillData = SkillsModule[skillName]
+    if not skillData then return end
+
+    local cfg = buttonConfigs[skillName] or {size=46,pos={100,100}}
+    buttonConfigs[skillName] = cfg
+
+    local old = guiStorage:FindFirstChild(skillName.."_Btn")
+    if old then old:Destroy() end
+
+    -- Frame & visuals
+    local btnFrame = Instance.new("Frame")
+    btnFrame.Name = skillName.."_Btn"
+    btnFrame.Size = UDim2.new(0,cfg.size,0,cfg.size)
+    btnFrame.Position = UDim2.new(0,cfg.pos[1],0,cfg.pos[2])
+    btnFrame.BackgroundTransparency = 1
+    btnFrame.Parent = guiStorage
+
+    local border = Instance.new("UIStroke")
+    border.Thickness = 2
+    border.Color = Color3.fromRGB(197,197,197)
+    border.Parent = btnFrame
+
+    local innerFrame = Instance.new("Frame")
+    innerFrame.Size = UDim2.new(1,0,1,0)
+    innerFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    innerFrame.BackgroundTransparency = 0.5
+    innerFrame.BorderSizePixel = 0
+    innerFrame.Parent = btnFrame
+
+    local icon = Instance.new("ImageLabel")
+    icon.Size = UDim2.new(0.9,0,0.9,0)
+    icon.Position = UDim2.new(0.5,0,0.5,0)
+    icon.AnchorPoint = Vector2.new(0.5,0.5)
+    icon.BackgroundTransparency = 1
+    icon.Image = skillData.Icon or ""
+    icon.ScaleType = Enum.ScaleType.Fit
+    icon.Parent = innerFrame
+
+    local cooldownOverlay = Instance.new("Frame")
+    cooldownOverlay.Size = UDim2.new(1,0,1,0)
+    cooldownOverlay.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    cooldownOverlay.BackgroundTransparency = 0.6
+    cooldownOverlay.BorderSizePixel = 0
+    cooldownOverlay.Visible = false
+    cooldownOverlay.Parent = innerFrame
+
+    local cdLabel = Instance.new("TextLabel")
+    cdLabel.Size = UDim2.new(1,0,1,0)
+    cdLabel.BackgroundTransparency = 1
+    cdLabel.TextColor3 = Color3.fromRGB(255,255,255)
+    cdLabel.TextScaled = true
+    cdLabel.Font = Enum.Font.GothamBold
+    cdLabel.Visible = false
+    cdLabel.Parent = cooldownOverlay
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1,0,1,0)
+    button.BackgroundTransparency = 1
+    button.Text = ""
+    button.Parent = innerFrame
+
+    -- Button click
+    button.MouseButton1Click:Connect(function()
+        local cooldown = tonumber(skillData.Cooldown) or 1
+        local now = os.clock()
+        if not lastUsed[skillName] or now - lastUsed[skillName] >= cooldown then
+            lastUsed[skillName] = now
+            local remoteFunc = ReplicatedStorage:WaitForChild("Events"):WaitForChild("RemoteFunctions"):WaitForChild("UseAbility")
+            pcall(function() remoteFunc:InvokeServer(skillName) end)
+            cooldownOverlay.Visible = true
+            cdLabel.Visible = true
+
+            task.spawn(function()
+                local t = cooldown
+                while t > 0 do
+                    cdLabel.Text = tostring(math.ceil(t))
+                    task.wait(1)
+                    t -= 1
+                end
+                cooldownOverlay.Visible = false
+                cdLabel.Visible = false
+            end)
+        end
+    end)
+
+    makeDraggable(btnFrame, skillName)
+end
+
+-- Remove skill button
+local function removeSkillButton(skillName)
+    local old = guiStorage:FindFirstChild(skillName.."_Btn")
+    if old then old:Destroy() end
+end
+
+-- Create toggles + sliders for each skill
+for _, skillName in ipairs(skillList) do
+    local enabled = false
+
+Skill:AddToggle("EnableSkill"..skillName, {
+    Text = "启用能力 ("..skillName..")",
+    Default = false,
+    Callback = function(v)
+        enabled = v
+        if v then
+            createSkillButton(skillName)
+        else
+            removeSkillButton(skillName)
+        end
+    end
+})
+
+Skill:AddSlider(skillName.."SkillSize", {
+    Text = "("..skillName..") 能力大小",
+    Min = 40,
+    Max = 120,
+    Rounding = 0,
+    Default = 46,
+    Compact = false,
+    Callback = function(val)
+        if not buttonConfigs[skillName] then
+            buttonConfigs[skillName] = {size=val,pos={100,100}}
+        else
+            buttonConfigs[skillName].size = val
+        end
+        if enabled then createSkillButton(skillName) end
+    end
+})
+end
 
 local Warning = Tabs.Main:AddRightGroupbox("杀手靠近提示")
 
@@ -2633,14 +3038,65 @@ MVP:AddSlider('MySlider4', {
 })
 --]]
 
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
+local MenuGroup = Tabs.Settings:AddLeftGroupbox("调试","wrench")
 
-ThemeManager:SetFolder("LightStar")
-SaveManager:SetFolder("LightStar/Game")
-SaveManager:SetSubFolder("Die of Death")
+-- 1. 显示/隐藏快捷键菜单
+MenuGroup:AddToggle("KeybindMenuOpen", {
+    Default = Library.KeybindFrame.Visible,  -- 默认显示快捷键菜单
+    Text = "键盘菜单",
+    Callback = function(value)
+        Library.KeybindFrame.Visible = value  -- 控制快捷键菜单的显示/隐藏
+    end,
+})
 
-SaveManager:BuildConfigSection(Tabs.Settings)
+-- 3. 设置通知位置（左/右）
+MenuGroup:AddDropdown("NotificationSide", {
+    Values = { "Left", "Right" },
+    Default = "Right",  -- 默认右侧显示通知
+    Text = "通知位置",
+    Callback = function(Value)
+        Library:SetNotifySide(Value)  -- 设置通知位置
+    end,
+})
+
+-- 4. 调整UI缩放比例（DPI）
+MenuGroup:AddDropdown("DPIDropdown", {
+    Values = { "25%", "50%", "75%", "100%", "125%", "150%", "175%", "200%" },
+    Default = "100%",  -- 默认100%大小
+    Text = "DPI菜单大小",
+    Callback = function(Value)
+        Value = Value:gsub("%%", "")  -- 移除百分号
+        local DPI = tonumber(Value)   -- 转换为数字
+        Library:SetDPIScale(DPI)      -- 调整UI缩放
+    end,
+})
+
+MenuGroup:AddDivider()  
+
+MenuGroup:AddLabel("Menu bind")  
+    :AddKeyPicker("MenuKeybind", { 
+        Default = "RightShift",  
+        NoUI = true,            
+        Text = "菜单打开"    
+})
+
+MenuGroup:AddButton("摧毁界面", function()
+    Library:Unload()  
+end)
+
+
+ThemeManager:SetLibrary(Library)  
+SaveManager:SetLibrary(Library)   
+SaveManager:IgnoreThemeSettings() 
+
+
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })  
+ThemeManager:SetFolder("LightStar")            
+SaveManager:SetFolder("LightStar/Game")  
+SaveManager:SetSubFolder("Die of Death")       
+SaveManager:BuildConfigSection(Tabs.Settings)  
+
 ThemeManager:ApplyToTab(Tabs.Settings)
+
 SaveManager:LoadAutoloadConfig()
 

@@ -34,8 +34,10 @@ local gameMap = workspace.Map
 local actor = Network:WaitForChild("RemoteEvent")
 --]]
 
+--[[
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
+--]]
 
 Library.ForceCheckbox = false -- 默认点击开关盒子 (false / true)
 Library.ShowToggleFrameInKeybinds = true 
@@ -54,7 +56,7 @@ local Window = Library:CreateWindow({
 })
 
 local Tabs = {
-    new = Window:AddTab('公告','external-link','公告&信息'),
+    new = Window:AddTab('主持','external-link','公告&信息'),
     Main = Window:AddTab('玩家','user','这是主要的!!!'),
     Aimbot = Window:AddTab('自瞄','crosshair','让你自瞄的更准!!!'),
     Esp = Window:AddTab('ESP','scan-eye','让你能够透视他们!!!'),
@@ -69,7 +71,6 @@ local Tabs = {
 }
 
 local _env = getgenv and getgenv() or {}
-local _hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
 
 task.spawn(function()
     while task.wait() do
@@ -118,11 +119,13 @@ function killerAttack()
     end
 end
 
+--[[
 local new = Tabs.new:AddLeftGroupbox('新闻','rocket')
 
 new:AddLabel("[+]开发 JackEyeKL")
-new:AddLabel("支持是我们的最大的贡献💩")
-new:AddLabel("脚本更新于1.24 早上 8:15 时间")
+new:AddLabel("支持是我们的最大的贡献😜")
+new:AddLabel("脚本更新于1.31 晚上 10:42 时间")
+--]]
 
 --[[
 local information = Tabs.new:AddLeftGroupbox('玩家 信息','info')
@@ -134,56 +137,77 @@ information:AddLabel("昵称 : "..game.Players.LocalPlayer.DisplayName)
 information:AddLabel("用户年龄 : "..game.Players.LocalPlayer.AccountAge.." 天")
 --]]
 
+local information = Tabs.new:AddLeftGroupbox('信息','info')
+
+    local Players = game:GetService('Players')
+    local player = Players.LocalPlayer
+    local avatarImage = information:AddImage('AvatarThumbnail', {
+        Image = 'rbxassetid://0',
+        Callback = function(image)
+            print('Image changed!', image)
+        end,
+    })
+
+    task.spawn(function()
+        repeat
+            task.wait()
+        until player
+
+        task.wait(1)
+
+        local success, thumbnail = pcall(function()
+            return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size180x180)
+        end)
+
+        if (success and thumbnail) then
+            avatarImage:SetImage(thumbnail)
+        else
+            local alternatives = {
+                Enum.ThumbnailType.AvatarThumbnail,
+                Enum.ThumbnailType.AvatarBust,
+                Enum.ThumbnailType.Avatar,
+            }
+
+            for _, thumbnailType in ipairs(alternatives)do
+                local altSuccess, altThumbnail = pcall(function()
+                    return Players:GetUserThumbnailAsync(player.UserId, thumbnailType, Enum.ThumbnailSize.Size180x180)
+                end)
+
+                if (altSuccess and altThumbnail) then
+                    avatarImage:SetImage(altThumbnail)
+
+                    break
+                end
+            end
+        end
+    end)
+    
+information:AddDivider()
+
+information:AddLabel("欢迎LightStar者用户")
+information:AddLabel("支持是我们的最大的贡献😜")
+
+information:AddDivider()
+
+information:AddLabel("执行器 : " ..identifyexecutor())
 --[[
-local Team = Tabs.new:AddLeftGroupbox('聊','external-link')
-
-Team:AddButton({
-    Text = "复制 LightStar Discord 链接",
-    Func = function ()
-setclipboard("https://discord.gg/BW55cR7Z")
-       end
-})
-
-Team:AddDivider()
-
-Team:AddButton({
-    Text = "复制 LightStar 企鹅群 ①",
-    Func = function ()
-setclipboard("798979110")
-       end
-})
-
---]]
 
 local information = Tabs.new:AddRightGroupbox('信息','info')
+
 information:AddLabel("Hello亲爱的使用LightStar者")
 information:AddLabel("这个服务器脚本停更")
 information:AddLabel("我不是跑路了")
 information:AddLabel("我的账号已封禁")
 information:AddLabel("我正在制作其他新的服务器脚本")
-information:AddLabel("谢谢你的观看")
---]]
-
--- Nolsaken团队遗憾走了之后才能开放的公告🤫🤫🤫 当时Nolsaken群聊散的时候 我以为真跑路了 不准给我公开 公开的人斯浮木和全家😂😂
-
---[[
-
-local RegretNolsakenTeam = Tabs.new:AddRightGroupbox('遗憾Nolsaken团队')
-
-RegretNolsakenTeamTeam:AddLabel("你好Nolsaken团队")
-RegretNolsakenTeamTeam:AddLabel("你们在1月4日4点56分发布最后1个视频")
-RegretNolsakenTeamTeam:AddLabel("请加入我们的LightStar团队")
-RegretNolsakenTeamTeam:AddLabel("走吧[<b><font color=\"rgb(128, 0, 128)\">Nolsaken团队</font></b>]")
-RegretNolsakenTeamTeam:AddLabel("我们有缘见Nolsaken团队")
+information:AddLabel("谢谢你的观看！！！")
 
 --]]
 
---[[
-local Contributor = Tabs.new:AddRightGroupbox('贡献者')
+local Contributor = Tabs.new:AddRightGroupbox('鸣谢&贡献者')
 
 Contributor:AddLabel("[<b><font color=\"rgb(0, 0, 255)\">JackEyeKL</font></b>] - 脚本所有者")
 
-Contributor:AddLabel("[<b><font color=\"rgb(128, 0, 128)\">宇星辰丫</font></b>] - 提供Nol原脚本终极源码")
+Contributor:AddLabel("[<b><font color=\"rgb(128, 0, 128)\">Yuxingchen</font></b>] - 提供Nol原脚本终极源码")
 
 local LightStar = Tabs.new:AddRightGroupbox('日志','users')
 
@@ -386,77 +410,6 @@ KillerSurvival:AddToggle('AlwaysShowChat', {
                 end
             end
         end
-})
-
-local loopRunning, loopThread, currentAnim, lastAnim
-local anim = Instance.new("Animation")
-anim.AnimationId = "rbxassetid://75804462760596"
-
-KillerSurvival:AddToggle("Invis", {
-    Text = "隐身",
-    Default = false,
-    Callback = function(Value)
-        if Value then
-            Notify("LightStar-警告", "当人们使用某些能力时 您仍然可以看到 或者如果他们有碰撞枪箱设置", 6)
-            loopRunning = true
-
-            loopThread = task.spawn(function()
-                while loopRunning do
-                    local hum = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and localPlayer.Character:FindFirstChild("Humanoid")
-                    if hum then
-                        enableNoclip()
-                    end
-
-                    if hum then
-                        local loadedAnim = hum:LoadAnimation(anim)
-                        currentAnim = loadedAnim
-                        loadedAnim.Looped = false
-                        loadedAnim:Play()
-                        loadedAnim:AdjustSpeed(0)
-                        task.wait(0.1)
-                        if lastAnim then
-                            lastAnim:Stop()
-                            lastAnim:Destroy()
-                        end
-                        lastAnim = currentAnim
-                    else
-                        currentAnim = nil
-                    end
-                    task.wait()
-                end
-            end)
-        else
-            loopRunning = false
-
-            if loopThread then
-                loopRunning = false
-                task.cancel(loopThread)
-            end
-
-            if currentAnim then
-                currentAnim:Stop()
-                currentAnim = nil
-            end
-
-            local Humanoid = localPlayer.Character and (localPlayer.Character:FindFirstChildOfClass("Humanoid") or localPlayer.Character:FindFirstChildOfClass("AnimationController"))
-            if Humanoid then
-                for _, v in pairs(Humanoid:GetPlayingAnimationTracks()) do
-                    v:AdjustSpeed(100000)
-                end
-                for _, v in pairs(localPlayer.Character:GetChildren()) do
-                    if v:IsA("BasePart") then
-                        v.CanCollide = true
-                    end
-                end
-            end
-
-            local animateScript = localPlayer.Character and localPlayer.Character:FindFirstChild("Animate")
-            if animateScript then
-                animateScript.Disabled = true
-                animateScript.Disabled = false
-            end
-        end
-    end
 })
 
 KillerSurvival:AddButton("FixLag", {
@@ -10889,14 +10842,65 @@ end
 
 --]]
 
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
+local MenuGroup = Tabs.Settings:AddLeftGroupbox("调试","wrench")
 
-ThemeManager:SetFolder("LightStar")
-SaveManager:SetFolder("LightStar/Game")
-SaveManager:SetSubFolder("Forsaken")
+-- 1. 显示/隐藏快捷键菜单
+MenuGroup:AddToggle("KeybindMenuOpen", {
+    Default = Library.KeybindFrame.Visible,  -- 默认显示快捷键菜单
+    Text = "键盘菜单",
+    Callback = function(value)
+        Library.KeybindFrame.Visible = value  -- 控制快捷键菜单的显示/隐藏
+    end,
+})
 
-SaveManager:BuildConfigSection(Tabs.Settings)
+-- 3. 设置通知位置（左/右）
+MenuGroup:AddDropdown("NotificationSide", {
+    Values = { "Left", "Right" },
+    Default = "Right",  -- 默认右侧显示通知
+    Text = "通知位置",
+    Callback = function(Value)
+        Library:SetNotifySide(Value)  -- 设置通知位置
+    end,
+})
+
+-- 4. 调整UI缩放比例（DPI）
+MenuGroup:AddDropdown("DPIDropdown", {
+    Values = { "25%", "50%", "75%", "100%", "125%", "150%", "175%", "200%" },
+    Default = "100%",  -- 默认100%大小
+    Text = "DPI菜单大小",
+    Callback = function(Value)
+        Value = Value:gsub("%%", "")  -- 移除百分号
+        local DPI = tonumber(Value)   -- 转换为数字
+        Library:SetDPIScale(DPI)      -- 调整UI缩放
+    end,
+})
+
+MenuGroup:AddDivider()  
+
+MenuGroup:AddLabel("Menu bind")  
+    :AddKeyPicker("MenuKeybind", { 
+        Default = "RightShift",  
+        NoUI = true,            
+        Text = "菜单打开"    
+})
+
+MenuGroup:AddButton("摧毁界面", function()
+    Library:Unload()  
+end)
+
+
+ThemeManager:SetLibrary(Library)  
+SaveManager:SetLibrary(Library)   
+SaveManager:IgnoreThemeSettings() 
+
+
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })  
+ThemeManager:SetFolder("LightStar")            
+SaveManager:SetFolder("LightStar/Game")  
+SaveManager:SetSubFolder("Die of Death")       
+SaveManager:BuildConfigSection(Tabs.Settings)  
+
 ThemeManager:ApplyToTab(Tabs.Settings)
+
 SaveManager:LoadAutoloadConfig()
 
