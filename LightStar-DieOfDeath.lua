@@ -47,6 +47,133 @@ local Tabs = {
 local _env = getgenv and getgenv() or {}
 local _hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
 
+-- UI文本自动汉化(前置模块 不删原内容)
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+-- 汉化文本配置(整合原脚本所有翻译项 不重复)
+
+local Translations = {
+    ["Revolver"] = "左轮手枪",
+    ["Punch"] = "拳头",
+    ["Hotdog"] = "热狗",
+    ["Taunt"] = "嘲讽",
+    ["Block"] = "格挡",
+    ["Banana"] = "香蕉",
+    ["Dash"] = "冲刺",
+    ["Cloak"] = "斗篷",
+    ["BonusPad"] = "加速垫",
+    ["Adrenaline"] = "肾上腺素",
+    ["Caretaker"] = "扔瓶医疗",
+    ["目标"] = "替换",
+}
+-- 翻译核心函数
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    if Translations[text] then
+        return Translations[text]
+    end
+    for en, cn in pairs(Translations) do
+        if text:find(en) then
+            return text:gsub(en, cn)
+        end
+    end
+    return text
+end
+-- 自动汉化引擎（启动即执行，无需点击）
+local function setupTranslationEngine()
+    local success, err = pcall(function()
+        -- 元表劫持（实时翻译新UI，不影响原逻辑）
+        local oldIndex = getrawmetatable(game).__newindex
+        setreadonly(getrawmetatable(game), false)
+        
+        getrawmetatable(game).__newindex = newcclosure(function(t, k, v)
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
+                v = translateText(tostring(v))
+            end
+            return oldIndex(t, k, v)
+        end)
+        
+        setreadonly(getrawmetatable(game), true)
+    end)
+    
+    if not success then
+        warn("元表劫持失败，启用备用汉化:", err)
+    end
+    -- 扫描已存在UI并汉化
+    local translated = {}
+    local function scanAndTranslate()
+        -- 系统UI
+        for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+            if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                pcall(function()
+                    local text = gui.Text
+                    if text and text ~= "" then
+                        local translatedText = translateText(text)
+                        if translatedText ~= text then
+                            gui.Text = translatedText
+                            translated[gui] = true
+                        end
+                    end
+                end)
+            end
+        end
+        -- 玩家UI
+        if LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui") then
+            for _, gui in ipairs(LocalPlayer.PlayerGui:GetDescendants()) do
+                if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                    pcall(function()
+                        local text = gui.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                gui.Text = translatedText
+                                translated[gui] = true
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end
+    -- 监听新创建UI
+    local function setupDescendantListener(parent)
+        parent.DescendantAdded:Connect(function(descendant)
+            if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                task.wait(0.1)
+                pcall(function()
+                    local text = descendant.Text
+                    if text and text ~= "" then
+                        local translatedText = translateText(text)
+                        if translatedText ~= text then
+                            descendant.Text = translatedText
+                        end
+                    end
+                end)
+            end
+        end)
+    end
+    -- 启动监听
+    pcall(setupDescendantListener, game:GetService("CoreGui"))
+    if LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui") then
+        pcall(setupDescendantListener, LocalPlayer.PlayerGui)
+    end
+    -- 持续扫描
+    coroutine.wrap(function()
+        while true do
+            scanAndTranslate()
+            task.wait(3)
+        end
+    end)()
+end
+-- 等待玩家加载后自动启动（不阻塞原脚本）
+coroutine.wrap(function()
+    repeat task.wait(0.1) until LocalPlayer and LocalPlayer.Character
+    setupTranslationEngine()
+end)()
+
 --[[
 local new = Tabs.new:AddLeftGroupbox('新闻','rocket')
 

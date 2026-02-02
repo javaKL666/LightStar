@@ -1,6 +1,6 @@
--- =====黑名单===== 注意添加一个人都要加or
-if game.Players.LocalPlayer.Name == "mmnnn185" or game.Players.LocalPlayer.Name == "mmnnn958" then
-    game.Players.LocalPlayer:Kick("您被脚本作者禁止使用脚本了😂")
+-- =====黑名单=====
+if game.Players.LocalPlayer.Name == "mmnnn185" or game.Players.LocalPlayer.Name == "mmnnn958" or game.Players.LocalPlayer.Name =="insano_waza6274" then
+    game.Players.LocalPlayer:Kick("您被脚本作者禁止使用了 如果想使用 请您向脚本作者问答")
 end
 
 -- =====游戏列表=====
