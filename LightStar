@@ -1,5 +1,5 @@
 -- =====黑名单===== 注意添加一个人都要加or
-if game.Players.LocalPlayer.Name == "mmnnn185" then
+if game.Players.LocalPlayer.Name == "mmnnn185" or game.Players.LocalPlayer.Name == "mmnnn958" then
     game.Players.LocalPlayer:Kick("您被脚本作者禁止使用脚本了😂")
 end
 
