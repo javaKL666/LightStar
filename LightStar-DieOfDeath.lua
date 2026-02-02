@@ -10,7 +10,10 @@ local repo = 'https://raw.githubusercontent.com/javaKL666/Obsidian/main/'
 
 
 
+--[[
 local Library = loadstring(game:HttpGet(repo .. "UseLibrary.lua"))()
+--]]
+local Library = loadstring(game:HttpGet(repo .. "DearReg.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
 local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
@@ -26,13 +29,6 @@ local Window = Library:CreateWindow({
 	Title = "LightStar",
 	Footer = "LightStar团队脚本-discord.gg/BW55cR7Z [来源Nolsaken]",
 	Icon = 106397684977541,
-	NotifySide = "Top-Right",
-	ShowCrosshair = false,
-	Center = true,
-    AutoShow = true,
-    Resizable = true,
-    TabPadding = 8,
-    MenuFadeTime = 0
 })
 
 local Tabs = {
@@ -116,7 +112,7 @@ local information = Tabs.new:AddLeftGroupbox('信息','info')
     
 information:AddDivider()
 
-information:AddLabel("欢迎LightStar者用户")
+information:AddLabel("欢迎LightStar者用户lol")
 information:AddLabel("支持是我们的最大的贡献😜")
 
 information:AddDivider()
@@ -3073,11 +3069,11 @@ MenuGroup:AddDropdown("DPIDropdown", {
 
 MenuGroup:AddDivider()  
 
-MenuGroup:AddLabel("Menu bind")  
+MenuGroup:AddLabel("界面打开")  
     :AddKeyPicker("MenuKeybind", { 
         Default = "RightShift",  
         NoUI = true,            
-        Text = "菜单打开"    
+        Text = "Menu keybind"    
 })
 
 MenuGroup:AddButton("摧毁界面", function()
