@@ -1,4 +1,8 @@
-local CoreGui = game:GetService("StarterGui")
+-- =====黑名单===== 注意添加一个人都要加or
+if game.Players.LocalPlayer.Name == "mmnnn185" then
+    game.Players.LocalPlayer:Kick("您被脚本作者禁止使用脚本了😂")
+end
+
 -- =====游戏列表=====
 local GameList = {
 [6331902150] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/javaKL666/LightStar/refs/heads/main/LightStar-Forsaken.lua'))()", --被遗弃Forsaken
@@ -12,7 +16,8 @@ elseif not getgenv().Key and GameList[game.GameId] ~= nil then
 	loadstring(GameList[tonumber(game.GameId)])()
 else
     -- =====如果不在游戏列表里 就加载的就显示提示或加载备用脚本=====
-     CoreGui:SetCore("SendNotification", {
+    local CoreGui = game:GetService("StarterGui")
+    CoreGui:SetCore("SendNotification", {
     Title = "LightStar-提示",
     Text = "请你到支持的服务器执行💩游戏列表没有此游戏脚本☠️",
     Duration = 10, 
