@@ -231,7 +231,7 @@ LightStar:AddLabel("新更新<b><font color=\"rgb(0, 255, 0)\">LightStar脚本</
 
 LightStar:AddDivider()
 
-LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">新的自动修机功能</font></b>功能了
+LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">新的自动修机功能</font></b>功能了")
 
 --LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">功能</font></b>功能了")
 --]]
