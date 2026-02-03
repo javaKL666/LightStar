@@ -233,6 +233,10 @@ LightStar:AddDivider()
 
 LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">新的自动修机功能</font></b>功能了")
 
+LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">c00lkidd反效果</font></b>功能了")
+
+LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">其他反效果</font></b>功能了")
+
 --LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">功能</font></b>功能了")
 --]]
 
@@ -9363,28 +9367,95 @@ ZZ:AddToggle("RemoveBlindness", {
     end
 })
 
+local ZZ = Tabs.BanEffect:AddRightGroupbox('c00lkidd')
+
+
+ZZ:AddToggle("WalkspeedController", {
+    Text = "速度覆盖控制器",
+    Default = false,
+    Callback = function(value)
+        if value then
+            globalEnv.connection = globalEnv.RunService.Heartbeat:Connect(globalEnv.onHeartbeat)
+        else
+            if globalEnv.connection then
+                globalEnv.connection:Disconnect()
+            end
+        end
+    end
+})
+
+ZZ:AddToggle("IgnoreObjectables", {
+    Text = "无视障碍物",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            getgenv().EnableC00lkidd()
+        else
+            getgenv().DisableC00lkidd()
+        end
+    end
+})
+
+ZZ:AddSlider("WalkSpeed", {
+    Text = "移动速度",
+    Default = 100,
+    Min = 16,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(Value)
+        globalEnv.walkSpeed = Value
+    end
+})
+
 local ZZ = Tabs.BanEffect:AddRightGroupbox('其他反效果')
 
-ZZ:AddToggle("RemoveStunningKiller", {
-    Text = "反谢德出剑缓慢移速", 
+ZZ:AddToggle("AntiHealthGlitch", {
+    Text = "反血量故障",
+    Default = false,
+    Callback = function()
+        task.spawn(function()
+            while Toggles.AntiHealthGlitch.Value and task.wait() do
+                local l_TemporaryUI_1 = l_l_LocalPlayer_1_2.PlayerGui:FindFirstChild("TemporaryUI")
+                for _, v442 in pairs(l_TemporaryUI_1:GetChildren()) do
+                    if v442.Name == "Frame" and v442:FindFirstChild("Glitched") then
+                        v442:Destroy()
+                    end
+                end
+            end
+        end)
+    end
+})
+
+ZZ:AddToggle("ProtectionDusekkar", {
+   Text = "反Dusekkar取消保护",
+   Default = false,
+   Tooltip = "防止护盾被取消",
+   Callback = function(Value)
+       if Value then
+           getgenv().EnableProtection()
+       else
+           getgenv().DisableProtection()
+       end
+   end
+})
+
+ZZ:AddToggle("RemoveNoobSlateskin", {
+    Text = "反菜鸟石板速度", 
     Default = false,
     Callback = function(v)
-        -- 初始化全局变量
-        if not _G.StunningKillerCleanup then _G.StunningKillerCleanup = {} end
-        local connections = _G.StunningKillerCleanup
+        if not _G.SlateskinCleanup then _G.SlateskinCleanup = {} end
+        local connections = _G.SlateskinCleanup
 
-        -- 关闭时清理所有连接
         for _, conn in pairs(connections) do
             if typeof(conn) == "RBXScriptConnection" then
                 conn:Disconnect()
             end
         end
-        _G.StunningKillerCleanup = {}
+        _G.SlateskinCleanup = {}
 
-        -- 如果关闭按钮，直接返回
         if not v then return end
 
-        local function CleanStunningKillers()
+        local function CleanSlateskins()
             local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
             if not survivorsFolder then return end
             
@@ -9393,80 +9464,29 @@ ZZ:AddToggle("RemoveStunningKiller", {
                 task.spawn(function()
                     for j = i, math.min(i + 4, #survivorList) do
                         local survivor = survivorList[j]
-                        local stunningKiller = survivor:FindFirstChild("Killer")
-                        if stunningKiller then
-                            stunningKiller:Destroy()
+                        local slateskin = survivor:FindFirstChild("SlateskinStatus")
+                        if slateskin then
+                            slateskin:Destroy()
                         end
                     end
                 end)
             end
         end
 
-        -- 初始清理
-        task.spawn(CleanStunningKillers)
+        task.spawn(CleanSlateskins)
 
-        -- 设置定期清理
         connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
             task.wait(2)
-            CleanStunningKillers()
+            CleanSlateskins()
         end)
 
-        -- 设置新对象添加时的监听
         local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
         if survivorsFolder then
             connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
-                if descendant.Name == "Killer" then
+                if descendant.Name == "SlateskinStatus" then
                     descendant:Destroy()
                 end
             end)
-        end
-    end
-})
-
-ZZ:AddToggle("NoobRemoveSlateskin", {
-    Text = "反菜鸟石板皮肤缓慢效果", 
-    Default = false,
-    Callback = function(v)
-        if SlateskinCleanupConnection then
-            SlateskinCleanupConnection:Disconnect()
-            SlateskinCleanupConnection = nil
-            table.clear(slateskinCache)
-        end
-
-        if v then
-            local function CleanSlateskins()
-                local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-                if not survivorsFolder then return end
-                
-                local survivorList = survivorsFolder:GetChildren()
-                for i = 1, #survivorList, 5 do
-                    task.spawn(function()
-                        for j = i, math.min(i + 4, #survivorList) do
-                            local survivor = survivorList[j]
-                            local slateskin = survivor:FindFirstChild("SlateskinStatus")
-                            if slateskin then
-                                slateskin:Destroy()
-                            end
-                        end
-                    end)
-                end
-            end
-
-            task.spawn(CleanSlateskins)
-
-            SlateskinCleanupConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                task.wait(2)
-                CleanSlateskins()
-            end)
-
-            local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-            if survivorsFolder then
-                survivorsFolder.DescendantAdded:Connect(function(descendant)
-                    if descendant.Name == "SlateskinStatus" then
-                        descendant:Destroy()
-                    end
-                end)
-            end
         end
     end
 })
@@ -9494,25 +9514,22 @@ ZZ:AddToggle("AntiSubspace", {
 
 local Disabled = Tabs.BanEffect:AddLeftGroupbox('访客1337反效果')
 
--- 1. 反访客冲刺没有击中都缓慢
 Disabled:AddToggle("RemoveSlowed", {
-    Text = "反冲刺没有击中都缓慢", 
+    Text = "反缓慢", 
     Default = false,
     Callback = function(v)
-        -- 修复点：使用局部变量保存连接
         if not _G.SlowedCleanup then _G.SlowedCleanup = {} end
         local connections = _G.SlowedCleanup
 
-        -- 关闭时断开所有连接
-        if not v then
-            for _, conn in pairs(connections) do
+        for _, conn in pairs(connections) do
+            if typeof(conn) == "RBXScriptConnection" then
                 conn:Disconnect()
             end
-            _G.SlowedCleanup = {}
-            return
         end
+        _G.SlowedCleanup = {}
 
-        -- 修复点：显式保存 DescendantAdded 事件
+        if not v then return end
+
         local function CleanSlowedStatuses()
             local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
             if not survivorsFolder then return end
@@ -9526,13 +9543,11 @@ Disabled:AddToggle("RemoveSlowed", {
 
         task.spawn(CleanSlowedStatuses)
 
-        -- 保存心跳连接
         connections.heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
             task.wait(1.5)
             CleanSlowedStatuses()
         end)
 
-        -- 保存新增监听
         local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
         if survivorsFolder then
             connections.descendantAdded = survivorsFolder.DescendantAdded:Connect(function(descendant)
@@ -9544,21 +9559,21 @@ Disabled:AddToggle("RemoveSlowed", {
     end
 })
 
--- 2. 反访客格挡时移速问题 (独立变量名)
 Disabled:AddToggle("RemoveBlockingSlow", {
-    Text = "反格挡时移速问题", 
+    Text = "反格挡速度", 
     Default = false,
     Callback = function(v)
         if not _G.BlockingCleanup then _G.BlockingCleanup = {} end
         local connections = _G.BlockingCleanup
 
-        if not v then
-            for _, conn in pairs(connections) do
+        for _, conn in pairs(connections) do
+            if typeof(conn) == "RBXScriptConnection" then
                 conn:Disconnect()
             end
-            _G.BlockingCleanup = {}
-            return
         end
+        _G.BlockingCleanup = {}
+
+        if not v then return end
 
         local function CleanStatuses()
             local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
@@ -9589,21 +9604,21 @@ Disabled:AddToggle("RemoveBlockingSlow", {
     end
 })
 
--- 3. 反访客拳击时移速问题 (独立变量名)
 Disabled:AddToggle("RemovePunchSlow", {
-    Text = "反拳击时移速问题", 
+    Text = "反拳击速度", 
     Default = false,
     Callback = function(v)
         if not _G.PunchCleanup then _G.PunchCleanup = {} end
         local connections = _G.PunchCleanup
 
-        if not v then
-            for _, conn in pairs(connections) do
+        for _, conn in pairs(connections) do
+            if typeof(conn) == "RBXScriptConnection" then
                 conn:Disconnect()
             end
-            _G.PunchCleanup = {}
-            return
         end
+        _G.PunchCleanup = {}
+
+        if not v then return end
 
         local function CleanStatuses()
             local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
@@ -9634,21 +9649,21 @@ Disabled:AddToggle("RemovePunchSlow", {
     end
 })
 
--- 5. 反访客冲刺结束效果
 Disabled:AddToggle("RemoveChargeEnded", {
-    Text = "反冲刺结束效果", 
+    Text = "反冲刺结束后效果", 
     Default = false,
     Callback = function(v)
         if not _G.ChargeEndedCleanup then _G.ChargeEndedCleanup = {} end
         local connections = _G.ChargeEndedCleanup
 
-        if not v then
-            for _, conn in pairs(connections) do
+        for _, conn in pairs(connections) do
+            if typeof(conn) == "RBXScriptConnection" then
                 conn:Disconnect()
             end
-            _G.ChargeEndedCleanup = {}
-            return
         end
+        _G.ChargeEndedCleanup = {}
+
+        if not v then return end
 
         local function CleanChargeEndedEffects()
             local survivorsFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
