@@ -17,7 +17,27 @@ local Library = loadstring(game:HttpGet(repo .. "DearReg.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
 local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
-Library:Notify("Loading LightStar for Die of Death",5,4590657391)
+Library:SetWatermarkVisibility(true)
+
+    local function updateWatermark()
+        local fps = 60
+        local frameTimer = tick()
+        local frameCounter = 0
+
+        game:GetService('RunService').RenderStepped:Connect(function()
+            frameCounter = frameCounter + 1
+
+            if ((tick() - frameTimer) >= 1) then
+                fps = frameCounter
+                frameTimer = tick()
+                frameCounter = 0
+            end
+
+            Library:SetWatermark(string.format('LightStar | %d FPS | JackEyeKL | %d ping ', math.floor(fps), math.floor(game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue())))
+        end)
+    end
+
+    updateWatermark()
 
 local Options = Library.Options
 local Toggles = Library.Toggles
