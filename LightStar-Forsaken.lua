@@ -57,10 +57,8 @@ local gameMap = workspace.Map
 local actor = Network:WaitForChild("RemoteEvent")
 --]]
 
---[[
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
---]]
 
 Library.ForceCheckbox = false -- 默认点击开关盒子 (false / true)
 Library.ShowToggleFrameInKeybinds = true 
@@ -70,11 +68,11 @@ local Window = Library:CreateWindow({
 	Footer = "LightStar团队脚本-discord.gg/BW55cR7Z [来源Nolsaken]",
 	Icon = 106397684977541,
 })
-
+--biohazard
 local Tabs = {
     new = Window:AddTab('主持','external-link','公告&信息'),
     Main = Window:AddTab('玩家','user','这是主要的!!!'),
-    Aimbot = Window:AddTab('自瞄','crosshair','让你自瞄的更准!!!'),
+    Aimbot = Window:AddTab('自瞄','cross','让你自瞄的更准!!!'),
     Esp = Window:AddTab('ESP','scan-eye','让你能够透视他们!!!'),
     NotificationListen = Window:AddTab('通知提示','mails','让你帮助你监听杀手!!!'),
     FightingKilling = Window:AddTab('战斗&杀戮','swords','让变得打击更轻松!!!'),
@@ -925,6 +923,7 @@ SM:AddSlider("TweTimeBackstabRange", {
     Rounding = 0
 })
 
+--[[
 local ZZ = Tabs.Main:AddLeftGroupbox('<b><font color=\"rgb(255, 0, 0)\">飞行[最危险]</font></b>')
 
 local RunService = game:GetService("RunService") --获取玩家操控位置函数
@@ -1018,7 +1017,8 @@ ZZ:AddSlider("CFlySpeed", {
         CFSpeed = Value
     end
 })
-
+--]]
+--[[
 local Game = Tabs.Main:AddLeftGroupbox('对局游戏')
 
 local hideBarConnection = nil
@@ -1087,120 +1087,7 @@ Game:AddToggle('HiddenGamePlayerColumn', {
         end
     end
 })
-
-Game:AddDivider()
-
-do
-    local Players = game:GetService("Players")
-    local player = Players.LocalPlayer
-
-    local fakeFixAnim = Instance.new("Animation")
-    fakeFixAnim.AnimationId = "rbxassetid://82691533602949"
-
-    local animator, fakeFixTrack
-
-    local function getAnimator()
-        local char = player.Character
-        if not char then return nil end
-        local humanoid = char:FindFirstChildOfClass("Humanoid") or char:FindFirstChildOfClass("AnimationController")
-        if not humanoid then return nil end
-        local anim = humanoid:FindFirstChildOfClass("Animator")
-        if not anim then
-            anim = Instance.new("Animator")
-            anim.Parent = humanoid
-        end
-        return anim
-    end
-
-
-Game:AddToggle("FakeFixGenerator", {
-        Text = "假修发动机",
-        Default = false,
-        Callback = function(state)
-            animator = getAnimator()
-            if not animator then return end
-
-            if state then
-                if not fakeFixTrack then
-                    local ok, track = pcall(function()
-                        return animator:LoadAnimation(fakeFixAnim)
-                    end)
-                    if ok and track then
-                        fakeFixTrack = track
-                        fakeFixTrack.Looped = true
-                        fakeFixTrack:Play()
-                    end
-                end
-            else
-                if fakeFixTrack then
-                    fakeFixTrack:Stop()
-                    fakeFixTrack = nil
-                end
-            end
-        end
-})
-end
-
-do
-Game:AddToggle("FakeDieV2", {
-    Text = "假死亡V2",
-    Default = false
-}):OnChanged(function(state)
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-
-    local plr = Players.LocalPlayer
-    local char = plr.Character or plr.CharacterAdded:Wait()
-    local hum = char:WaitForChild("Humanoid")
-
-    if not getgenv().FakeDieData then
-        getgenv().FakeDieData = {track=nil, conn=nil}
-    end
-
-    if state then
-        local anim = Instance.new("Animation")
-        anim.AnimationId = "rbxassetid://118795597134269"
-
-        local track = hum:LoadAnimation(anim)
-        track:Play()
-
-        if track.Length > 0 then
-            track.TimePosition = track.Length * 0.5
-        end
-
-        getgenv().FakeDieData.track = track
-
-        local stopped = false
-        local conn = RunService.Heartbeat:Connect(function()
-            if track.IsPlaying and not stopped and track.Length > 0 then
-                local percent = track.TimePosition / track.Length
-                if percent >= 0.9 then
-                    track:AdjustSpeed(0) -- pause ở 90%
-                    stopped = true
-                    print("假死亡V2: 动作暂停90%")
-                end
-            end
-        end)
-
-        getgenv().FakeDieData.conn = conn
-
-    else
-        local data = getgenv().FakeDieData
-        if data.track then
-            data.track:Stop()
-            data.track = nil
-        end
-        if data.conn then
-            data.conn:Disconnect()
-            data.conn = nil
-        end
-
-        pcall(function()
-            hum:PlayEmote("idle")
-        end)
-    end
-end)
-end
+--]]
 
 local AntiBan = Tabs.Main:AddRightGroupbox("绕过反作弊")
 
@@ -5526,7 +5413,6 @@ Visual:AddSlider("RightWidthScale", {
     end
 })
 
-
 Visual:AddSlider("FrontExtend", {
     Text = "前延伸基础值",
     Min = 1.9,
@@ -5596,36 +5482,9 @@ Visual:AddSlider("FootOffset", {
 
 local Visual = Tabs.Esp:AddLeftGroupbox("物品ESP")
 
-Visual:AddToggle("GingerbreadESP", {
-    Text = "饼干ESP",
-}):AddColorPicker("GingerbreadESPColor", {
-    Default = Color3.fromRGB(255, 50, 204),
-    Title = "饼干ESP颜色",
-})
-
-task.spawn(function()
-    while task.wait(0.1) do
-        pcall(function()
-            if not Toggles.GingerbreadESP.Value then return end
-            for i, v in pairs(gameMap.Ingame.CurrencyLocations:GetChildren()) do
-                if v:IsA("Model") and v:FindFirstChildWhichIsA("Part").Position.Y > -200 then
-                    if not v:FindFirstChild("gingerbread_Esp") then
-                        local hl = Instance.new("Highlight", v)
-                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        hl.Name = "gingerbread_Esp"
-                    else
-                        v.gingerbread_Esp.FillColor = Options.GingerbreadESPColor.Value
-                        v.gingerbread_Esp.OutlineTransparency = 1
-                    end
-                end
-            end
-        end)
-    end
-end)
-
 local LibESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImamGV/Script/main/ESP"))()
 
-Visual:AddToggle("EKE",{
+Visual:AddToggle("KillerRobotsESP",{
     Text = "杀手机器人ESP",
     Callback = function(v)
         if v then
@@ -5661,7 +5520,7 @@ Visual:AddToggle("EKE",{
     end
 })
 
-Visual:AddToggle("ShadowDetector", {
+Visual:AddToggle("ShadowESP", {
     Text = "数码足迹ESP",
     Default = false,
     Callback = function(Value)
@@ -5930,7 +5789,7 @@ Visual:AddToggle("ShadowDetector", {
     end
 })
 
-Visual:AddToggle("TWE", {
+Visual:AddToggle("tweESP", {
     Text = "绊线ESP",
     Default = false,
     Callback = function(state)
@@ -6007,7 +5866,7 @@ Visual:AddToggle("TWE", {
     end
 })
 
-Visual:AddToggle("ST",{
+Visual:AddToggle("SubspaceTripmineESP",{
 Text = "空间炸弹ESP",
 Callback = function(v)
       if v then
@@ -6221,7 +6080,7 @@ Warning:AddDropdown("WarningColor", {
 
 local Visual = Tabs.NotificationListen:AddRightGroupbox("Noli监听")
 
-Visual:AddToggle("NoliTeleportAlert", {
+Visual:AddToggle("NoliTeleportAlertNotify", {
     Text = "Noli传送提示",
     Default = false,
     Callback = function(v)
@@ -6290,7 +6149,7 @@ Visual:AddToggle("NoliTeleportAlert", {
     end
 })
 
-Visual:AddToggle("NoliTeleportCancel", {
+Visual:AddToggle("NoliTeleportCancelNotify", {
     Text = "Noli传送取消提示",
     Default = false,
     Callback = function(v)
@@ -6364,7 +6223,7 @@ Visual:AddToggle("NoliTeleportCancel", {
     end
 })
 
-Visual:AddToggle("NoliMotorSelect", {
+Visual:AddToggle("NoliMotorSelectNotify", {
     Text = "Noli电机选择提示",
     Default = false,
     Callback = function(v)
@@ -6430,7 +6289,7 @@ Visual:AddToggle("NoliMotorSelect", {
     end
 })
 
-Visual:AddToggle("NoliMotorSelect", {
+Visual:AddToggle("NoliMotorSelectNotify", {
     Text = "Noli冲刺提示",
     Default = false,
     Callback = function(v)
@@ -6507,7 +6366,7 @@ Visual:AddToggle("NoliMotorSelect", {
 
 local Visual = Tabs.NotificationListen:AddRightGroupbox('其他监听')
 
-Visual:AddToggle("NGT",{
+Visual:AddToggle("007n7Notify",{
         Text = "007n7分身生成提示",
         Default = false,
         Callback = function(v)
@@ -6526,7 +6385,7 @@ Visual:AddToggle("NGT",{
         end
 })
 
-Visual:AddToggle("NKT",{
+Visual:AddToggle("BuildermanSentryNotify",{
         Text = "哨兵生成提示",
         Default = false,
         Callback = function(v)
@@ -6545,7 +6404,7 @@ Visual:AddToggle("NKT",{
         end
 })
 
-Visual:AddToggle("NUT",{
+Visual:AddToggle("BuildermanDispenserNotify",{
         Text = "分配器生成提示",
         Default = false,
         Callback = function(v)
@@ -6565,7 +6424,7 @@ Visual:AddToggle("NUT",{
 })
 
 
-Visual:AddToggle("NST",{
+Visual:AddToggle("SubspaceTripmineNotify",{
         Text = "三角炸弹生成提示",
         Default = false,
         Callback = function(v)
@@ -6584,7 +6443,7 @@ Visual:AddToggle("NST",{
         end
 })
 
-Visual:AddToggle("NST",{
+Visual:AddToggle("PizzaNotify",{
         Text = "披萨生成提示",
         Default = false,
         Callback = function(v)
@@ -6603,7 +6462,7 @@ Visual:AddToggle("NST",{
         end
 })
 
-Visual:AddToggle("NSM",{
+Visual:AddToggle("ShadowNotify",{
         Text = "数码足迹提示",
         Default = false,
         Callback = function(v)
@@ -6622,7 +6481,7 @@ Visual:AddToggle("NSM",{
         end
 })
 
-Visual:AddToggle("NEK",{
+Visual:AddToggle("EntityKillersNotify",{
         Text = "实体生成提示",
         Default = false,
         Callback = function(v)
@@ -8084,7 +7943,7 @@ getgenv().GetSilentAimTargetPosition = function()
     return nil
 end
 
-SM:AddToggle("静默瞄准", {
+SM:AddToggle("KillerSilentAimbot", {
     Text = "静默瞄准",
     Callback = function(state)
         silentAimEnabled = state
@@ -8108,14 +7967,7 @@ SM:AddToggle("静默瞄准", {
             targetPlayer = nil
         end
     end
-}):AddKeyPicker("AimKeyPicker", {
-    Text = "静默瞄准",
-    Default = "Z",
-    Mode = "Toggle",
-    SyncToggleState = true,
 })
-
-
 
 -- 创建全局连接管理表
 if not _G.HitboxTracking then
@@ -8389,7 +8241,7 @@ local function updateHitbox()
     end
 end
 
-SM:AddToggle("打人", {
+SM:AddToggle("ShowHitbox", {
     Text = "显示碰撞箱",
     Default = false,
     Callback = function(state)
@@ -8419,8 +8271,357 @@ SM:AddToggle("打人", {
     end
 })
 
+local SM = Tabs.FightingKilling:AddLeftGroupbox('自调Hitbox追踪')
+
+local HitboxTrackingEnabled = false
+local HeartbeatConnection = nil
+local MaxDistance = 120
+local FilterSurvivors = false
+local FilterKillers = false
+local WallCheckEnabled = false 
+
+local Killers = {
+    ["Slasher"] = true, ["1x1x1x1"] = true, ["c00lkidd"] = true,
+    ["Noli"] = true, ["JohnDoe"] = true, ["Guest 666"] = true,
+    ["Sixer"] = true
+}
+local Survivors = {
+    ["Noob"] = true, ["Guest1337"] = true, ["Elliot"] = true,
+    ["Shedletsky"] = true, ["TwoTime"] = true, ["007n7"] = true,
+    ["Chance"] = true, ["Builderman"] = true, ["Taph"] = true,
+    ["Dusekkar"] = true, ["Veeronica"] = true
+}
+
+local AttackAnimations = {
+    'rbxassetid://131430497821198',
+    'rbxassetid://83829782357897',
+    'rbxassetid://126830014841198',
+    'rbxassetid://126355327951215',
+    'rbxassetid://121086746534252',
+    'rbxassetid://105458270463374',
+    'rbxassetid://18885919947',
+    'rbxassetid://18885909645',
+    'rbxassetid://87259391926321',
+    'rbxassetid://106014898528300',
+    'rbxassetid://86545133269813',
+    'rbxassetid://89448354637442',
+    'rbxassetid://90499469533503',
+    'rbxassetid://116618003477002',
+    'rbxassetid://106086955212611',
+    'rbxassetid://107640065977686',
+    'rbxassetid://77124578197357',
+    'rbxassetid://101771617803133',
+    'rbxassetid://134958187822107',
+    'rbxassetid://111313169447787',
+    'rbxassetid://71685573690338',
+    'rbxassetid://129843313690921',
+    'rbxassetid://97623143664485',
+    'rbxassetid://136007065400978',
+    'rbxassetid://86096387000557',
+    'rbxassetid://108807732150251',
+    'rbxassetid://138040001965654',
+    'rbxassetid://73502073176819',
+    'rbxassetid://86709774283672',
+    'rbxassetid://140703210927645',
+    'rbxassetid://96173857867228',
+    'rbxassetid://121255898612475',
+    'rbxassetid://98031287364865',
+    'rbxassetid://119462383658044',
+    'rbxassetid://77448521277146',
+    'rbxassetid://103741352379819',
+    'rbxassetid://131696603025265',
+    'rbxassetid://122503338277352',
+    'rbxassetid://97648548303678',
+    'rbxassetid://94162446513587',
+    'rbxassetid://84426150435898',
+    'rbxassetid://93069721274110',
+    'rbxassetid://114620047310688',
+    'rbxassetid://97433060861952',
+    'rbxassetid://82183356141401',
+    'rbxassetid://100592913030351',
+    'rbxassetid://121293883585738',
+    'rbxassetid://70447634862911',
+    'rbxassetid://92173139187970',
+    'rbxassetid://106847695270773',
+    'rbxassetid://125403313786645',
+    'rbxassetid://81639435858902',
+    'rbxassetid://137314737492715',
+    'rbxassetid://120112897026015',
+    'rbxassetid://82113744478546',
+    'rbxassetid://118298475669935',
+    'rbxassetid://126681776859538',
+    'rbxassetid://129976080405072',
+    'rbxassetid://109667959938617',
+    'rbxassetid://74707328554358',
+    'rbxassetid://133336594357903',
+    'rbxassetid://86204001129974',
+    'rbxassetid://124243639579224',
+    'rbxassetid://70371667919898',
+    'rbxassetid://131543461321709',
+    'rbxassetid://136323728355613',
+    'rbxassetid://109230267448394',
+    'rbxassetid://139835501033932',
+    'rbxassetid://106538427162796',
+    'rbxassetid://110400453990786',
+    'rbxassetid://83685305553364',
+    'rbxassetid://126171487400618',
+    'rbxassetid://122709416391891',
+    'rbxassetid://87989533095285',
+    'rbxassetid://119326397274934',
+    'rbxassetid://140365014326125',
+    'rbxassetid://139309647473555',
+    'rbxassetid://133363345661032',
+    'rbxassetid://128414736976503',
+    'rbxassetid://121808371053483',
+    'rbxassetid://88451353906104',
+    'rbxassetid://81299297965542',
+    'rbxassetid://99829427721752',
+    'rbxassetid://126896426760253',
+    'rbxassetid://77375846492436',
+    'rbxassetid://94634594529334',
+    'rbxassetid://101031946095087'
+    
+}
+
+SM:AddSlider("DistanceSlider", {
+    Text = "追踪范围",
+    Default = 120,
+    Min = 1,
+    Max = 300,
+    Rounding = 0,
+    Callback = function(value)
+        MaxDistance = value
+    end
+})
+
+SM:AddToggle("FilterSurvivorsToggle", {
+    Text = "过滤[不追踪]幸存者",
+    Default = false,
+    Callback = function(state)
+        FilterSurvivors = state
+    end
+})
+
+SM:AddToggle("FilterKillersToggle", {
+    Text = "过滤[不追踪]杀手",
+    Default = false,
+    Callback = function(state)
+        FilterKillers = state
+    end
+})
 
 
+SM:AddToggle("WallCheck", {
+    Text = "墙壁检测",
+    Default = false,
+    Callback = function(state)
+        WallCheckEnabled = state
+    end
+})
+
+SM:AddToggle("HitboxTracking", {
+    Text = "Hitbox追踪",
+    Default = false,
+    Callback = function(state)
+        HitboxTrackingEnabled = state
+        
+        if HeartbeatConnection then
+            HeartbeatConnection:Disconnect()
+            HeartbeatConnection = nil
+        end
+        
+        if not state then return end
+        
+        repeat task.wait() until game:IsLoaded();
+
+        local Players = game:GetService('Players');
+        local Player = Players.LocalPlayer;
+        local Character = Player.Character or Player.CharacterAdded:Wait();
+        local Humanoid = Character:WaitForChild("Humanoid");
+        local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart");
+
+        Player.CharacterAdded:Connect(function(NewCharacter)
+            Character = NewCharacter;
+            Humanoid = Character:WaitForChild("Humanoid");
+            HumanoidRootPart = Character:WaitForChild("HumanoidRootPart");
+        end);
+
+        local RNG = Random.new();
+        local RaycastParams = RaycastParams.new()  
+        RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+        RaycastParams.IgnoreWater = true
+        
+        
+        local function isTargetVisible(targetCharacter)
+            if not WallCheckEnabled or not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then
+                return true
+            end
+            
+            local targetHRP = targetCharacter.HumanoidRootPart
+            local origin = HumanoidRootPart.Position
+            local direction = (targetHRP.Position - origin).Unit
+            local distance = (targetHRP.Position - origin).Magnitude
+            
+           
+            local filterList = {Character, targetCharacter}
+            RaycastParams.FilterDescendantsInstances = filterList
+            
+            local rayResult = workspace:Raycast(origin, direction * distance, RaycastParams)
+            
+           
+            if not rayResult then
+                return true
+            end
+            
+        
+            local hitInstance = rayResult.Instance
+            if hitInstance and hitInstance:IsDescendantOf(targetCharacter) then
+                return true
+            end
+            
+            
+            return false
+        end
+        
+        local function getCharacterRole(character)
+            local modelName = character.Name
+            if Killers[modelName] then
+                return "Killer"
+            elseif Survivors[modelName] then
+                return "Survivor"
+            end
+            return "Unknown"
+        end
+        
+        HeartbeatConnection = game:GetService('RunService').Heartbeat:Connect(function()
+            if not HitboxTrackingEnabled or not HumanoidRootPart then
+                return;
+            end
+
+            local Playing = false;
+            for _,v in Humanoid:GetPlayingAnimationTracks() do
+                if table.find(AttackAnimations, v.Animation.AnimationId) and (v.TimePosition / v.Length < 0.75) then
+                    Playing = true;
+                end
+            end
+
+            if not Playing then
+                return;
+            end
+
+            local PlayerRole = getCharacterRole(Character)
+            local OppositeTable = nil
+            if PlayerRole == "Killer" then
+                OppositeTable = Survivors
+            elseif PlayerRole == "Survivor" then
+                OppositeTable = Killers
+            end
+
+            local Target = nil
+            local CurrentNearestDist = MaxDistance
+
+            local OppTarget = nil
+            local OppNearestDist = MaxDistance
+
+            local function loopForOpp(t)
+                for _,v in pairs(t) do
+                    if v == Character or not v:FindFirstChild("HumanoidRootPart") or not v:FindFirstChild("Humanoid") then
+                        continue
+                    end
+                    
+                 
+                    if WallCheckEnabled and not isTargetVisible(v) then
+                        continue
+                    end
+                    
+                    local modelName = v.Name
+                    if OppositeTable and OppositeTable[modelName] then
+                        local Dist = (v.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                        if Dist < OppNearestDist then
+                            OppNearestDist = Dist
+                            OppTarget = v
+                        end
+                    end
+                end
+            end
+
+            if OppositeTable then
+                loopForOpp(workspace.Players:GetDescendants())
+                local npcsFolder = workspace.Map:FindFirstChild("NPCs", true)
+                if npcsFolder then
+                    loopForOpp(npcsFolder:GetChildren())
+                end
+            end
+
+            local function loopAll(t)
+                for _,v in pairs(t) do
+                    if v == Character or not v:FindFirstChild("HumanoidRootPart") or not v:FindFirstChild("Humanoid") then
+                        continue
+                    end
+                    
+                   
+                    if WallCheckEnabled and not isTargetVisible(v) then
+                        continue
+                    end
+                    
+                    local characterRole = getCharacterRole(v)
+                    
+                    if FilterSurvivors and characterRole == "Survivor" then
+                        continue
+                    end
+                    if FilterKillers and characterRole == "Killer" then
+                        continue
+                    end
+                    
+                    if PlayerRole == "Killer" and characterRole == "Killer" then
+                        continue
+                    end
+                    if PlayerRole == "Survivor" and characterRole == "Survivor" then
+                        continue
+                    end
+                    
+                    local Dist = (v.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                    if Dist < CurrentNearestDist then
+                        CurrentNearestDist = Dist
+                        Target = v
+                    end
+                end
+            end
+
+            local FinalTarget = nil
+            if OppTarget then
+                FinalTarget = OppTarget
+            else
+                loopAll(workspace.Players:GetDescendants())
+                local npcsFolder2 = workspace.Map:FindFirstChild("NPCs", true)
+                if npcsFolder2 then
+                    loopAll(npcsFolder2:GetChildren())
+                end
+                FinalTarget = Target
+            end
+
+            if not FinalTarget then
+                return;
+            end
+
+            local OldVelocity = HumanoidRootPart.Velocity;
+            local NeededVelocity =
+            (FinalTarget.HumanoidRootPart.Position + Vector3.new(
+                RNG:NextNumber(-1.5, 1.5),
+                0,
+                RNG:NextNumber(-1.5, 1.5)
+            ) + (FinalTarget.HumanoidRootPart.Velocity * (Player:GetNetworkPing() * 1.25))
+                - HumanoidRootPart.Position
+            ) / (Player:GetNetworkPing() * 2);
+
+            HumanoidRootPart.Velocity = NeededVelocity;
+            game:GetService('RunService').RenderStepped:Wait();
+            HumanoidRootPart.Velocity = OldVelocity;
+        end);
+    end,
+})
+
+--[[
 local SM = Tabs.FightingKilling:AddLeftGroupbox('自调碰撞箱追踪')
 
 SM:AddLabel("<b><font color=\"rgb(0, 0, 255)\">[注意]</font></b> 每1局要开1次")
@@ -8628,6 +8829,7 @@ local AttackAnimations = {
         end);
     end,
 })
+--]]
 
 local SM = Tabs.FightingKilling:AddRightGroupbox('暴力','angry')
 
@@ -9368,7 +9570,6 @@ ZZ:AddToggle("RemoveBlindness", {
 })
 
 local ZZ = Tabs.BanEffect:AddRightGroupbox('c00lkidd')
-
 
 ZZ:AddToggle("WalkspeedController", {
     Text = "速度覆盖控制器",
@@ -10242,7 +10443,6 @@ task.spawn(function()
     end
 end)
 
--- 无限体力功能
 local bai = {Spr = false}
 local connection
 
@@ -10370,6 +10570,7 @@ MVP:AddSlider('MySlider4', {
 })
 
 local ZZ = Tabs.Generator:AddLeftGroupbox("自动修机/演戏(事件)")
+
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10565,6 +10766,7 @@ Generator:AddButton("TeleportGenerator", {
         Library:Notifiy("没有找到可修理的发电机")
     end
 })
+
 
 --[[ 问:为什么要维护传送发动机呢？
    答:因为有错别 所以正在维护中 我们会推出很好的来做比较
