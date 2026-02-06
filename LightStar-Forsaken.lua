@@ -198,7 +198,7 @@ local information = Tabs.new:AddLeftGroupbox('信息','info')
     
 information:AddDivider()
 
-information:AddLabel("欢迎LightStar者用户lol")
+information:AddLabel("欢迎用户"..game.Players.LocalPlayer.DisplayName.." ("..game.Players.LocalPlayer.Name..")"
 information:AddLabel("支持是我们的最大的贡献😜")
 
 information:AddDivider()
@@ -707,6 +707,7 @@ KillerSurvival:AddToggle("AntiHiddenStats", {
     end
 })
 
+--[[
 local ZZ = Tabs.Main:AddLeftGroupbox('自动狂暴[杰森]')
 
 local Players = game:GetService("Players")
@@ -842,6 +843,7 @@ ZZ:AddSlider("JasonAutoRagingPaceRange", {
         savedRange.Value = value
     end
 })
+--]]
 
 local SM = Tabs.Main:AddLeftGroupbox('背刺[TweTime]')
 
@@ -7878,6 +7880,1358 @@ local args = {
     end
 })
 
+--[[
+getgenv().Players = game:GetService("Players")
+getgenv().RunService = game:GetService("RunService")
+getgenv().LocalPlayer = getgenv().Players.LocalPlayer
+getgenv().ReplicatedStorage = game:GetService("ReplicatedStorage")
+getgenv().buffer = buffer or require(getgenv().ReplicatedStorage.Buffer)
+getgenv().RemoteEvent = getgenv().ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
+
+local Plrs = getgenv().Players
+local RSvc = getgenv().RunService
+local LocalP = getgenv().LocalPlayer
+local RS = getgenv().ReplicatedStorage
+
+getgenv().AutoBlockSounds = {
+    ["102228729296384"]=true,["140242176732868"]=true,["112809109188560"]=true,
+    ["136323728355613"]=true,["115026634746636"]=true,["84116622032112"]=true,
+    ["108907358619313"]=true,["127793641088496"]=true,["86174610237192"]=true,
+    ["95079963655241"]=true,["101199185291628"]=true,["119942598489800"]=true,
+    ["84307400688050"]=true,["113037804008732"]=true,["105200830849301"]=true,
+    ["75330693422988"]=true,["82221759983649"]=true,["81702359653578"]=true,
+    ["108610718831698"]=true,["112395455254818"]=true,["109431876587852"]=true,
+    ["109348678063422"]=true,["85853080745515"]=true,["12222216"]=true,
+    ["105840448036441"]=true,["114742322778642"]=true,["119583605486352"]=true,
+    ["79980897195554"]=true,["71805956520207"]=true,["79391273191671"]=true,
+    ["89004992452376"]=true,["101553872555606"]=true,["101698569375359"]=true,
+    ["106300477136129"]=true,["116581754553533"]=true,["117231507259853"]=true,
+    ["119089145505438"]=true,["121954639447247"]=true,["125213046326879"]=true,
+    ["131406927389838"]=true,["117173212095661"]=true,["104910828105172"]=true,
+    ["128856426573270"]=true,["131123355704017"]=true,["80516583309685"]=true,
+    ["99829427721752"]=true,["71834552297085"]=true,["75467546215199"]=true,
+    ["121369993837377"]=true,["109700476007435"]=true,["89315669689903"]=true,
+    ["79222929114377"]=true,["70845653728841"]=true,["107444859834748"]=true,
+    ["110372418055226"]=true,["86833981571073"]=true,["86494585504534"]=true,
+    ["76959687420003"]=true,["90878551190839"]=true,["77245770579014"]=true,
+    ["85810983952228"]=true,["110115912768379"]=true,["94043596324983"]=true
+}
+
+getgenv().AutoBlockAnims = {
+    ["126830014841198"]=true,["126355327951215"]=true,["121086746534252"]=true,
+    ["18885909645"]=true,["98456918873918"]=true,["105458270463374"]=true,
+    ["83829782357897"]=true,["125403313786645"]=true,["118298475669935"]=true,
+    ["82113744478546"]=true,["70371667919898"]=true,["99135633258223"]=true,
+    ["97167027849946"]=true,["109230267448394"]=true,["139835501033932"]=true,
+    ["126896426760253"]=true,["109667959938617"]=true,["126681776859538"]=true,
+    ["129976080405072"]=true,["121293883585738"]=true,["81639435858902"]=true,
+    ["137314737492715"]=true,["92173139187970"]=true,["114506382930939"]=true,
+    ["94162446513587"]=true,["93069721274110"]=true,["97433060861952"]=true,
+    ["106847695270773"]=true,["120112897026015"]=true,["74707328554358"]=true,
+    ["133336594357903"]=true,["86204001129974"]=true,["131543461321709"]=true,
+    ["106776364623742"]=true,["114356208094580"]=true,["106538427162796"]=true,
+    ["131430497821198"]=true,["100592913030351"]=true,["70447634862911"]=true,
+    ["83685305553364"]=true,["126171487400618"]=true,["83251433279852"]=true,
+    ["122709416391891"]=true,["87989533095285"]=true,["139309647473555"]=true,
+    ["133363345661032"]=true,["128414736976503"]=true,["88451353906104"]=true,
+    ["81299297965542"]=true,["99829427721752"]=true,["101031946095087"]=true,
+    ["96571077893813"]=true,["109700476007435"]=true,["92645737884601"]=true
+}
+
+getgenv().PunchAnims = {
+    ["108911997126897"]=true,["82137285150006"]=true,["129843313690921"]=true,
+    ["140703210927645"]=true,["136007065400978"]=true,["86096387000557"]=true,
+    ["87259391926321"]=true,["86709774283672"]=true,["108807732150251"]=true,
+    ["138040001965654"]=true
+}
+
+getgenv().AutoBlockEnabled = false
+getgenv().LooseFacingCheck = false
+getgenv().SenseRange = 18
+getgenv().PlayerFacingAngle = 90
+getgenv().KillerFacingAngle = 90
+getgenv().KillerFacingCheckEnabled = false
+getgenv().KillersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
+getgenv().SenseRangeSq = getgenv().SenseRange * getgenv().SenseRange
+getgenv().FacingCheckEnabled = false
+getgenv().InnerCircleVisible = false
+getgenv().OuterCircleVisible = false
+getgenv().KillerCircles = {}
+getgenv().SoundHooks = {}
+getgenv().AnimHooks = {}
+getgenv().SoundBlockedUntil = {}
+getgenv().AnimBlockedUntil = {}
+getgenv().autoPunchOn = false
+getgenv().aimbotPunchOn = false
+getgenv().punchRange = 50
+getgenv().aimbotDelay = 0.1
+getgenv().lastAimbotTime = 0
+getgenv().KnownKillers = {"c00lkidd","Jason","JohnDoe","1x1x1x1","Noli","Slasher","Sixer","Nosferatu"}
+getgenv().CachedGui = getgenv().LocalPlayer:WaitForChild("PlayerGui")
+getgenv().CachedPunchBtn = nil
+getgenv().CachedCharges = nil
+getgenv().CachedBlockBtn = nil
+getgenv().CachedCooldown = nil
+getgenv().HDPullEnabled = false
+getgenv().HDSpeed = 12
+getgenv().pulling = false
+getgenv().wallCheckEnabled = false
+getgenv().visualizationParts = {}
+getgenv().lastVisUpdate = 0
+getgenv().visUpdateInterval = 0.033
+getgenv().VisualizationMode = "指南针"
+getgenv().BoxLength = 15
+getgenv().BoxWidth = 6
+getgenv().BoxColor = Color3.fromRGB(255, 0, 255)
+getgenv().BoxTransparency = 0.7
+getgenv().BoxSafeColor = Color3.fromRGB(0, 255, 0)
+getgenv().BoxDangerColor = Color3.fromRGB(255, 0, 0)
+
+getgenv().FireBlockRemote = function()
+    local args = {"UseActorAbility",{getgenv().buffer.fromstring("\"Block\"")}}
+    RS:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent"):FireServer(unpack(args))
+end
+
+getgenv().fireRemotePunch = function()
+    local args = {"UseActorAbility",{getgenv().buffer.fromstring("\"Punch\"")}}
+    getgenv().RemoteEvent:FireServer(unpack(args))
+end
+
+getgenv().IsPlayerFacingKiller = function(myRoot,killerRoot)
+    if not getgenv().FacingCheckEnabled then return true end
+    if not myRoot or not killerRoot then return false end
+    local dirToKiller = (killerRoot.Position - myRoot.Position).Unit
+    local playerLookDir = myRoot.CFrame.LookVector
+    local dotProduct = playerLookDir:Dot(dirToKiller)
+    local angleInDegrees = math.deg(math.acos(math.clamp(dotProduct,-1,1)))
+    return angleInDegrees <= getgenv().PlayerFacingAngle
+end
+
+getgenv().IsKillerFacingPlayer = function(myRoot,killerRoot)
+    if not getgenv().KillerFacingCheckEnabled then return true end
+    if not myRoot or not killerRoot then return false end
+    local dirToPlayer = (myRoot.Position - killerRoot.Position).Unit
+    local killerLookDir = killerRoot.CFrame.LookVector
+    local dotProduct = killerLookDir:Dot(dirToPlayer)
+    local angleInDegrees = math.deg(math.acos(math.clamp(dotProduct,-1,1)))
+    return angleInDegrees <= getgenv().KillerFacingAngle
+end
+
+getgenv().HasLineOfSight = function(targetRoot)
+    if not getgenv().wallCheckEnabled then return true end
+    local myRoot = LocalP.Character and LocalP.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return false end
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    rayParams.IgnoreWater = true
+    rayParams.FilterDescendantsInstances = {LocalP.Character}
+    local origin = myRoot.Position
+    local direction = targetRoot.Position - origin
+    local result = workspace:Raycast(origin,direction,rayParams)
+    return not result or result.Instance:IsDescendantOf(targetRoot.Parent)
+end
+
+getgenv().IsPlayerInBox = function(myRoot, killerRoot)
+    if not myRoot or not killerRoot then return false end
+    
+    local forward = killerRoot.CFrame.LookVector * (getgenv().BoxLength/2 + 3 - 4)
+    local boxPos = killerRoot.Position + forward
+    local boxCFrame = CFrame.lookAt(boxPos, boxPos + killerRoot.CFrame.LookVector * 100)
+    
+    local relative = myRoot.Position - boxPos
+    local localSpace = boxCFrame:VectorToObjectSpace(relative)
+    local half = Vector3.new(getgenv().BoxWidth, 3, getgenv().BoxLength) / 2
+    
+    return math.abs(localSpace.X) <= half.X and math.abs(localSpace.Y) <= half.Y and math.abs(localSpace.Z) <= half.Z
+end
+
+getgenv().CheckAllBlockConditions = function(myRoot,killerRoot)
+    if not myRoot or not killerRoot then return false end
+    
+    if getgenv().VisualizationMode == "Box" then
+        if not getgenv().IsPlayerInBox(myRoot, killerRoot) then return false end
+    elseif getgenv().VisualizationMode == "球体" then
+        local dvec = killerRoot.Position - myRoot.Position
+        local distSq = dvec.X^2 + dvec.Y^2 + dvec.Z^2
+        if distSq > getgenv().SenseRangeSq then return false end
+    else
+        local dvec = killerRoot.Position - myRoot.Position
+        local distSq = dvec.X^2 + dvec.Y^2 + dvec.Z^2
+        if distSq > getgenv().SenseRangeSq then return false end
+    end
+    
+    if not getgenv().HasLineOfSight(killerRoot) then return false end
+    if not getgenv().IsPlayerFacingKiller(myRoot,killerRoot) then return false end
+    if not getgenv().IsKillerFacingPlayer(myRoot,killerRoot) then return false end
+    return true
+end
+
+getgenv().GetSoundIdNumeric = function(snd)
+    if not snd or not snd.SoundId then return nil end
+    local sid = tostring(snd.SoundId)
+    return sid:match("%d+")
+end
+
+getgenv().GetAnimIdNumeric = function(anim)
+    if not anim or not anim.AnimationId then return nil end
+    local aid = tostring(anim.AnimationId)
+    return aid:match("%d+")
+end
+
+getgenv().GetSoundPosition = function(snd)
+    if not snd then return nil end
+    if snd.Parent and snd.Parent:IsA("BasePart") then
+        return snd.Parent.Position,snd.Parent
+    end
+    if snd.Parent and snd.Parent:IsA("Attachment") and snd.Parent.Parent and snd.Parent.Parent:IsA("BasePart") then
+        return snd.Parent.Parent.Position,snd.Parent.Parent
+    end
+    local found = snd.Parent and snd.Parent:FindFirstChildWhichIsA("BasePart",true)
+    return found and found.Position,found or nil,nil
+end
+
+getgenv().GetCharFromDescendant = function(inst)
+    if not inst then return nil end
+    local mdl = inst:FindFirstAncestorOfClass("Model")
+    return mdl and mdl:FindFirstChildOfClass("Humanoid") and mdl or nil
+end
+
+getgenv().CanUseBlock = function()
+    if getgenv().CachedCooldown and getgenv().CachedCooldown.Text ~= "" then return false end
+    return true
+end
+
+getgenv().DoHDPull = function(targetPos)
+    if getgenv().pulling or not getgenv().CanUseBlock() then return end
+    getgenv().pulling = true
+    local hrp = LocalP.Character and LocalP.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then getgenv().pulling = false return end
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(40000,0,40000)
+    bv.Velocity = Vector3.zero
+    bv.Parent = hrp
+    local conn = RSvc.Heartbeat:Connect(function()
+        if not bv.Parent then conn:Disconnect() getgenv().pulling = false return end
+        local vec = targetPos - hrp.Position
+        if vec.Magnitude < 5 then bv:Destroy() conn:Disconnect() getgenv().pulling = false return end
+        bv.Velocity = vec.Unit * (getgenv().HDSpeed * 20)
+    end)
+    task.delay(0.5,function()
+        if bv and bv.Parent then bv:Destroy() end
+        if conn then conn:Disconnect() end
+        getgenv().pulling = false
+    end)
+end
+
+getgenv().AttemptBlockSound = function(snd)
+    if not getgenv().AutoBlockEnabled then return end
+    if not snd or not snd:IsA("Sound") then return end
+    if not snd.IsPlaying then return end
+    local id = getgenv().GetSoundIdNumeric(snd)
+    if not id or not getgenv().AutoBlockSounds[id] then return end
+    local now = tick()
+    if getgenv().SoundBlockedUntil[snd] and now < getgenv().SoundBlockedUntil[snd] then return end
+    local myRoot = LocalP.Character and LocalP.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    local pos,part = getgenv().GetSoundPosition(snd)
+    if not pos or not part then return end
+    local char = getgenv().GetCharFromDescendant(part)
+    local plr = char and Plrs:GetPlayerFromCharacter(char)
+    if not plr or plr == LocalP then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if not getgenv().CheckAllBlockConditions(myRoot,hrp) then return end
+    getgenv().FireBlockRemote()
+    if getgenv().HDPullEnabled then
+        getgenv().DoHDPull(hrp.Position)
+    end
+    getgenv().SoundBlockedUntil[snd] = now + 1.2
+end
+
+getgenv().AttemptBlockAnim = function(animTrack)
+    if not getgenv().AutoBlockEnabled then return end
+    if not animTrack or not animTrack.Animation then return end
+    if not animTrack.IsPlaying then return end
+    local id = getgenv().GetAnimIdNumeric(animTrack.Animation)
+    if not id or not getgenv().AutoBlockAnims[id] then return end
+    local now = tick()
+    if getgenv().AnimBlockedUntil[animTrack] and now < getgenv().AnimBlockedUntil[animTrack] then return end
+    local myRoot = LocalP.Character and LocalP.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    local animator = animTrack.Parent
+    if not animator or not animator:IsA("Animator") then return end
+    local char = getgenv().GetCharFromDescendant(animator)
+    if not char then return end
+    local plr = Plrs:GetPlayerFromCharacter(char)
+    if not plr or plr == LocalP then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if not getgenv().CheckAllBlockConditions(myRoot,hrp) then return end
+    getgenv().FireBlockRemote()
+    if getgenv().HDPullEnabled then
+        getgenv().DoHDPull(hrp.Position)
+    end
+    getgenv().AnimBlockedUntil[animTrack] = now + 1.2
+end
+
+getgenv().HookSound = function(snd)
+    if not snd or not snd:IsA("Sound") then return end
+    if getgenv().SoundHooks[snd] then return end
+    local playConn = snd.Played:Connect(function()
+        pcall(getgenv().AttemptBlockSound,snd)
+    end)
+    local propConn = snd:GetPropertyChangedSignal("IsPlaying"):Connect(function()
+        if snd.IsPlaying then pcall(getgenv().AttemptBlockSound,snd) end
+    end)
+    local destroyConn
+    destroyConn = snd.Destroying:Connect(function()
+        if playConn.Connected then playConn:Disconnect() end
+        if propConn.Connected then propConn:Disconnect() end
+        if destroyConn.Connected then destroyConn:Disconnect() end
+        getgenv().SoundHooks[snd] = nil
+        getgenv().SoundBlockedUntil[snd] = nil
+    end)
+    getgenv().SoundHooks[snd] = {playConn,propConn,destroyConn}
+    if snd.IsPlaying then
+        task.spawn(function() pcall(getgenv().AttemptBlockSound,snd) end)
+    end
+end
+
+getgenv().HookAnimator = function(animator)
+    if not animator or not animator:IsA("Animator") then return end
+    animator.AnimationPlayed:Connect(function(animTrack)
+        pcall(function()
+            local playConn = animTrack:GetPropertyChangedSignal("IsPlaying"):Connect(function()
+                if animTrack.IsPlaying then
+                    pcall(getgenv().AttemptBlockAnim,animTrack)
+                end
+            end)
+            animTrack.Stopped:Connect(function()
+                if playConn.Connected then playConn:Disconnect() end
+                getgenv().AnimBlockedUntil[animTrack] = nil
+            end)
+            if animTrack.IsPlaying then
+                pcall(getgenv().AttemptBlockAnim,animTrack)
+            end
+        end)
+    end)
+end
+
+for _,d in ipairs(game:GetDescendants()) do
+    if d:IsA("Sound") then pcall(getgenv().HookSound,d) end
+    if d:IsA("Animator") then pcall(getgenv().HookAnimator,d) end
+end
+
+game.DescendantAdded:Connect(function(d)
+    if d:IsA("Sound") then pcall(getgenv().HookSound,d) end
+    if d:IsA("Animator") then pcall(getgenv().HookAnimator,d) end
+end)
+
+getgenv().CreateCompassVisualization = function(killer, myRoot)
+    if not killer or not killer:FindFirstChild("HumanoidRootPart") or not myRoot then return nil end
+    local killerRoot = killer.HumanoidRootPart
+    
+    local folder = Instance.new("Folder")
+    folder.Name = "CompassVisualization"
+    folder.Parent = killerRoot
+    
+    local dirToPlayer = (myRoot.Position - killerRoot.Position).Unit
+    local forward = Vector3.new(dirToPlayer.X, 0, dirToPlayer.Z).Unit
+    local right = Vector3.new(-forward.Z, 0, forward.X)
+    
+    local angle = getgenv().KillerFacingCheckEnabled and getgenv().KillerFacingAngle or 360
+    local angleRad = math.rad(angle)
+    local distance = getgenv().SenseRange
+    local segments = 24
+    
+    local centerPart = Instance.new("Part")
+    centerPart.Name = "Center"
+    centerPart.Size = Vector3.new(0.5,0.1,0.5)
+    centerPart.Anchored = true
+    centerPart.CanCollide = false
+    centerPart.Transparency = 0.5
+    centerPart.Material = Enum.Material.Neon
+    centerPart.Color = Color3.fromRGB(255,255,0)
+    centerPart.Position = killerRoot.Position + Vector3.new(0, 0.1, 0)
+    centerPart.Parent = folder
+    
+    local parts = {centerPart}
+    
+    for i = 1, segments do
+        local part = Instance.new("Part")
+        part.Name = "ArcPoint"..i
+        part.Size = Vector3.new(0.3,0.1,0.3)
+        part.Anchored = true
+        part.CanCollide = false
+        part.Transparency = 0.6
+        part.Material = Enum.Material.Neon
+        part.Color = Color3.fromRGB(255,100,100)
+        part.Parent = folder
+        table.insert(parts, part)
+    end
+    
+    return {folder = folder, parts = parts, killer = killer, mode = "指南针"}
+end
+
+getgenv().CreateFixedVisualization = function(killer)
+    if not killer or not killer:FindFirstChild("HumanoidRootPart") then return nil end
+    local killerRoot = killer.HumanoidRootPart
+    
+    local folder = Instance.new("Folder")
+    folder.Name = "FixedVisualization"
+    folder.Parent = killerRoot
+    
+    local segments = 24
+    local parts = {}
+    
+    local centerPart = Instance.new("Part")
+    centerPart.Name = "Center"
+    centerPart.Size = Vector3.new(0.5,0.1,0.5)
+    centerPart.Anchored = true
+    centerPart.CanCollide = false
+    centerPart.Transparency = 0.5
+    centerPart.Material = Enum.Material.Neon
+    centerPart.Color = Color3.fromRGB(255,255,0)
+    centerPart.Position = killerRoot.Position + Vector3.new(0, 0.1, 0)
+    centerPart.Parent = folder
+    table.insert(parts, centerPart)
+    
+    for i = 1, segments do
+        local part = Instance.new("Part")
+        part.Name = "ArcPoint"..i
+        part.Size = Vector3.new(0.3,0.1,0.3)
+        part.Anchored = true
+        part.CanCollide = false
+        part.Transparency = 0.6
+        part.Material = Enum.Material.Neon
+        part.Color = Color3.fromRGB(100,100,255)
+        part.Parent = folder
+        table.insert(parts, part)
+    end
+    
+    return {folder = folder, parts = parts, killer = killer, mode = "固定"}
+end
+
+getgenv().CreateBoxVisualization = function(killer)
+    if not killer or not killer:FindFirstChild("HumanoidRootPart") then return nil end
+    local killerRoot = killer.HumanoidRootPart
+    
+    local folder = Instance.new("Folder")
+    folder.Name = "BoxVisualization"
+    folder.Parent = killerRoot
+    
+    local box = Instance.new("Part")
+    box.Name = "DetectionBox"
+    box.Material = Enum.Material.Neon
+    box.Anchored = true
+    box.CanCollide = false
+    box.Transparency = getgenv().BoxTransparency
+    box.Color = getgenv().BoxColor
+    box.Size = Vector3.new(getgenv().BoxWidth, 3, getgenv().BoxLength)
+    box.Parent = folder
+    
+    return {folder = folder, box = box, killer = killer, mode = "Box"}
+end
+
+getgenv().CreateSphereVisualization = function(killer)
+    if not killer or not killer:FindFirstChild("HumanoidRootPart") then return nil end
+    local killerRoot = killer.HumanoidRootPart
+    
+    local folder = Instance.new("Folder")
+    folder.Name = "SphereVisualization"
+    folder.Parent = killerRoot
+    
+    local sphere = Instance.new("Part")
+    sphere.Name = "DetectionSphere"
+    sphere.Shape = Enum.PartType.Ball
+    sphere.Material = Enum.Material.Neon
+    sphere.Anchored = true
+    sphere.CanCollide = false
+    sphere.Transparency = 0.85
+    sphere.Color = Color3.fromRGB(255, 0, 0)
+    sphere.Size = Vector3.new(getgenv().SenseRange * 2, getgenv().SenseRange * 2, getgenv().SenseRange * 2)
+    sphere.Parent = folder
+    
+    return {folder = folder, sphere = sphere, killer = killer, mode = "球体"}
+end
+
+getgenv().UpdateCompassVisualization = function(visData, myRoot)
+    if not visData or not visData.folder or not visData.folder.Parent then return end
+    if not myRoot or not visData.killer or not visData.killer:FindFirstChild("HumanoidRootPart") then return end
+    
+    local killerRoot = visData.killer.HumanoidRootPart
+    local dirToPlayer = (myRoot.Position - killerRoot.Position).Unit
+    local forward = Vector3.new(dirToPlayer.X, 0, dirToPlayer.Z).Unit
+    local right = Vector3.new(-forward.Z, 0, forward.X)
+    
+    local angle = getgenv().KillerFacingCheckEnabled and getgenv().KillerFacingAngle or 360
+    local angleRad = math.rad(angle)
+    local distance = getgenv().SenseRange
+    
+    visData.parts[1].Position = killerRoot.Position + Vector3.new(0, 0.1, 0)
+    
+    for i = 2, #visData.parts do
+        local part = visData.parts[i]
+        local t = (i - 2) / (#visData.parts - 2)
+        local currentAngle = -angleRad/2 + angleRad * t
+        local direction = forward * math.cos(currentAngle) + right * math.sin(currentAngle)
+        part.Position = killerRoot.Position + Vector3.new(0, 0.1, 0) + direction * distance
+    end
+    
+    local shouldBlock = getgenv().CheckAllBlockConditions(myRoot, killerRoot)
+    local color = shouldBlock and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+    for _, part in ipairs(visData.parts) do
+        part.Color = color
+    end
+end
+
+getgenv().UpdateFixedVisualization = function(visData, myRoot)
+    if not visData or not visData.folder or not visData.folder.Parent then return end
+    if not myRoot or not visData.killer or not visData.killer:FindFirstChild("HumanoidRootPart") then return end
+    
+    local killerRoot = visData.killer.HumanoidRootPart
+    local forward = killerRoot.CFrame.LookVector
+    local right = Vector3.new(-forward.Z, 0, forward.X)
+    
+    local angle = getgenv().KillerFacingCheckEnabled and getgenv().KillerFacingAngle or 360
+    local angleRad = math.rad(angle)
+    local distance = getgenv().SenseRange
+    
+    visData.parts[1].Position = killerRoot.Position + Vector3.new(0, 0.1, 0)
+    
+    for i = 2, #visData.parts do
+        local part = visData.parts[i]
+        local t = (i - 2) / (#visData.parts - 2)
+        local currentAngle = -angleRad/2 + angleRad * t
+        local direction = forward * math.cos(currentAngle) + right * math.sin(currentAngle)
+        direction = Vector3.new(direction.X, 0, direction.Z).Unit
+        part.Position = killerRoot.Position + Vector3.new(0, 0.1, 0) + direction * distance
+    end
+    
+    local shouldBlock = getgenv().CheckAllBlockConditions(myRoot, killerRoot)
+    local color = shouldBlock and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 255)
+   for _, part in ipairs(visData.parts) do
+       part.Color = color
+   end
+end
+
+getgenv().UpdateBoxVisualization = function(visData, myRoot)
+   if not visData or not visData.folder or not visData.folder.Parent then return end
+   if not myRoot or not visData.killer or not visData.killer:FindFirstChild("HumanoidRootPart") then return end
+   
+   local killerRoot = visData.killer.HumanoidRootPart
+   local forward = killerRoot.CFrame.LookVector * (getgenv().BoxLength/2 + 3 - 4)
+   local boxPos = killerRoot.Position + forward + Vector3.new(0, 0, 0)
+   
+   visData.box.Size = Vector3.new(getgenv().BoxWidth, 3, getgenv().BoxLength)
+   visData.box.CFrame = CFrame.lookAt(boxPos, boxPos + killerRoot.CFrame.LookVector * 100)
+   visData.box.Transparency = getgenv().BoxTransparency
+   
+   local shouldBlock = getgenv().IsPlayerInBox(myRoot, killerRoot) and getgenv().CheckAllBlockConditions(myRoot, killerRoot)
+   visData.box.Color = shouldBlock and getgenv().BoxSafeColor or getgenv().BoxDangerColor
+end
+
+getgenv().UpdateSphereVisualization = function(visData, myRoot)
+   if not visData or not visData.folder or not visData.folder.Parent then return end
+   if not myRoot or not visData.killer or not visData.killer:FindFirstChild("HumanoidRootPart") then return end
+   
+   local killerRoot = visData.killer.HumanoidRootPart
+   
+   visData.sphere.Size = Vector3.new(getgenv().SenseRange * 2, getgenv().SenseRange * 2, getgenv().SenseRange * 2)
+   visData.sphere.CFrame = killerRoot.CFrame
+   
+   local distance = (myRoot.Position - killerRoot.Position).Magnitude
+   local shouldBlock = distance <= getgenv().SenseRange and getgenv().CheckAllBlockConditions(myRoot, killerRoot)
+   visData.sphere.Color = shouldBlock and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+end
+
+getgenv().CreateVisualizationForKiller = function(killer)
+   if not killer or not killer:FindFirstChild("HumanoidRootPart") then return nil end
+   
+   if getgenv().VisualizationMode == "指南针" then
+       local myRoot = LocalP.Character and LocalP.Character:FindFirstChild("HumanoidRootPart")
+       return getgenv().CreateCompassVisualization(killer, myRoot)
+   elseif getgenv().VisualizationMode == "固定" then
+       return getgenv().CreateFixedVisualization(killer)
+   elseif getgenv().VisualizationMode == "Box" then
+       return getgenv().CreateBoxVisualization(killer)
+   elseif getgenv().VisualizationMode == "球体" then
+       return getgenv().CreateSphereVisualization(killer)
+   end
+   return nil
+end
+
+getgenv().UpdateVisualization = function(visData, myRoot)
+   if not visData then return end
+   
+   if visData.mode == "指南针" then
+       getgenv().UpdateCompassVisualization(visData, myRoot)
+   elseif visData.mode == "固定" then
+       getgenv().UpdateFixedVisualization(visData, myRoot)
+   elseif visData.mode == "Box" then
+       getgenv().UpdateBoxVisualization(visData, myRoot)
+   elseif visData.mode == "球体" then
+       getgenv().UpdateSphereVisualization(visData, myRoot)
+   end
+end
+
+getgenv().AddKillerCircle = function(killer)
+   if not killer:FindFirstChild("HumanoidRootPart") then return end
+   if getgenv().KillerCircles[killer] then return end
+   
+   local innerCirc, outerCirc
+   
+   if getgenv().InnerCircleVisible then
+       innerCirc = Instance.new("CylinderHandleAdornment")
+       innerCirc.Name = "KillerInnerCircle"
+       innerCirc.Adornee = killer.HumanoidRootPart
+       innerCirc.Color3 = Color3.fromRGB(255,0,0)
+       innerCirc.AlwaysOnTop = true
+       innerCirc.ZIndex = 1
+       innerCirc.Transparency = 0.7
+       innerCirc.Radius = getgenv().SenseRange
+       innerCirc.Height = 0.1
+       innerCirc.CFrame = CFrame.Angles(math.rad(90),0,0)
+       innerCirc.Parent = killer.HumanoidRootPart
+   end
+   
+   if getgenv().OuterCircleVisible then
+       outerCirc = Instance.new("CylinderHandleAdornment")
+       outerCirc.Name = "KillerOuterCircle"
+       outerCirc.Adornee = killer.HumanoidRootPart
+       outerCirc.Color3 = Color3.fromRGB(0,255,255)
+       outerCirc.AlwaysOnTop = true
+       outerCirc.ZIndex = 0
+       outerCirc.Transparency = 0.3
+       outerCirc.Radius = getgenv().punchRange
+       outerCirc.Height = 0.1
+       outerCirc.CFrame = CFrame.Angles(math.rad(90),0,0)
+       outerCirc.Parent = killer.HumanoidRootPart
+   end
+   
+   local visData = getgenv().CreateVisualizationForKiller(killer)
+   
+   getgenv().KillerCircles[killer] = {innerCircle = innerCirc, outerCircle = outerCirc, visualization = visData}
+end
+
+getgenv().RemoveKillerCircle = function(killer)
+   if getgenv().KillerCircles[killer] then
+       if getgenv().KillerCircles[killer].innerCircle then
+           getgenv().KillerCircles[killer].innerCircle:Destroy()
+       end
+       if getgenv().KillerCircles[killer].outerCircle then
+           getgenv().KillerCircles[killer].outerCircle:Destroy()
+       end
+       if getgenv().KillerCircles[killer].visualization and getgenv().KillerCircles[killer].visualization.folder then
+           getgenv().KillerCircles[killer].visualization.folder:Destroy()
+       end
+       getgenv().KillerCircles[killer] = nil
+   end
+end
+
+getgenv().RefreshKillerCircles = function()
+   for _,killer in ipairs(getgenv().KillersFolder:GetChildren()) do
+       if getgenv().InnerCircleVisible or getgenv().OuterCircleVisible then
+           getgenv().AddKillerCircle(killer)
+       else
+           getgenv().RemoveKillerCircle(killer)
+       end
+   end
+end
+
+getgenv().UpdateVisualizationMode = function(newMode)
+   getgenv().VisualizationMode = newMode
+   
+   for killer, data in pairs(getgenv().KillerCircles) do
+       if data.visualization and data.visualization.folder then
+           data.visualization.folder:Destroy()
+       end
+       
+       local newVisData = getgenv().CreateVisualizationForKiller(killer)
+       data.visualization = newVisData
+   end
+end
+
+getgenv().UpdateBoxColors = function()
+   for killer, data in pairs(getgenv().KillerCircles) do
+       if data.visualization and data.visualization.mode == "Box" and data.visualization.box then
+           data.visualization.box.Transparency = getgenv().BoxTransparency
+       end
+   end
+end
+
+RSvc.Heartbeat:Connect(function()
+   if not (getgenv().InnerCircleVisible or getgenv().OuterCircleVisible) then return end
+   
+   local now = tick()
+   if now - getgenv().lastVisUpdate < getgenv().visUpdateInterval then return end
+   getgenv().lastVisUpdate = now
+   
+   local myRoot = LocalP.Character and LocalP.Character:FindFirstChild("HumanoidRootPart")
+   if not myRoot then return end
+   
+   for killer, data in pairs(getgenv().KillerCircles) do
+       if killer:FindFirstChild("HumanoidRootPart") then
+           local killerRoot = killer.HumanoidRootPart
+           
+           if data.innerCircle and data.innerCircle.Parent then
+               data.innerCircle.Radius = getgenv().SenseRange
+               
+               local shouldBlock = getgenv().CheckAllBlockConditions(myRoot, killerRoot)
+               data.innerCircle.Color3 = shouldBlock and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+           end
+           
+           if data.outerCircle and data.outerCircle.Parent then
+               data.outerCircle.Radius = getgenv().punchRange
+               
+               local dist = (killerRoot.Position - myRoot.Position).Magnitude
+               data.outerCircle.Color3 = dist <= getgenv().punchRange and Color3.fromRGB(0, 150, 150) or Color3.fromRGB(0, 100, 100)
+           end
+           
+           if data.visualization then
+               pcall(getgenv().UpdateVisualization, data.visualization, myRoot)
+           end
+       end
+   end
+end)
+
+getgenv().KillersFolder.ChildAdded:Connect(function(killer)
+   if getgenv().InnerCircleVisible or getgenv().OuterCircleVisible then
+       task.spawn(function()
+           local hrp = killer:WaitForChild("HumanoidRootPart",5)
+           if hrp then getgenv().AddKillerCircle(killer) end
+       end)
+   end
+end)
+
+getgenv().KillersFolder.ChildRemoved:Connect(function(killer)
+   getgenv().RemoveKillerCircle(killer)
+end)
+
+getgenv().RefreshUI = function()
+   getgenv().CachedGui = getgenv().LocalPlayer:FindFirstChild("PlayerGui") or getgenv().CachedGui
+   local mainUI = getgenv().CachedGui and getgenv().CachedGui:FindFirstChild("MainUI")
+   if mainUI then
+       local abilityContainer = mainUI:FindFirstChild("AbilityContainer")
+       getgenv().CachedPunchBtn = abilityContainer and abilityContainer:FindFirstChild("Punch")
+       getgenv().CachedBlockBtn = abilityContainer and abilityContainer:FindFirstChild("Block")
+       getgenv().CachedCharges = getgenv().CachedPunchBtn and getgenv().CachedPunchBtn:FindFirstChild("Charges")
+       getgenv().CachedCooldown = getgenv().CachedBlockBtn and getgenv().CachedBlockBtn:FindFirstChild("CooldownTime")
+   else
+       getgenv().CachedPunchBtn,getgenv().CachedBlockBtn,getgenv().CachedCharges,getgenv().CachedCooldown = nil,nil,nil,nil
+   end
+end
+
+getgenv().RefreshUI()
+
+if getgenv().CachedGui then
+   getgenv().CachedGui.ChildAdded:Connect(function(child)
+       if child.Name == "MainUI" then
+           task.delay(0.02,getgenv().RefreshUI)
+       end
+   end)
+end
+
+getgenv().LocalPlayer.CharacterAdded:Connect(function()
+   task.delay(0.5,getgenv().RefreshUI)
+end)
+
+getgenv().getClosestKiller = function()
+   local myChar = getgenv().LocalPlayer.Character
+   local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+   if not myRoot then return nil end
+   local closest,closestDist = nil,math.huge
+   local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+   if killersFolder then
+       for _,name in ipairs(getgenv().KnownKillers) do
+           local killer = killersFolder:FindFirstChild(name)
+           if killer and killer:FindFirstChild("HumanoidRootPart") then
+               local root = killer.HumanoidRootPart
+               local dist = (root.Position - myRoot.Position).Magnitude
+               if dist < closestDist and dist <= getgenv().punchRange then
+                   closest = killer
+                   closestDist = dist
+               end
+           end
+       end
+   end
+   return closest
+end
+
+getgenv().RunService.RenderStepped:Connect(function()
+   if not getgenv().autoPunchOn and not getgenv().aimbotPunchOn then return end
+   local myChar = getgenv().LocalPlayer.Character
+   local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+   local gui = getgenv().CachedGui:FindFirstChild("MainUI")
+   local punchBtn = gui and gui:FindFirstChild("AbilityContainer") and gui.AbilityContainer:FindFirstChild("Punch")
+   local charges = punchBtn and punchBtn:FindFirstChild("Charges")
+   if punchBtn and charges and myRoot then
+       local chargeCount = tonumber(charges.Text) or 0
+       if chargeCount >= 1 then
+           local killer = getgenv().getClosestKiller()
+           if killer and killer:FindFirstChild("HumanoidRootPart") then
+               if getgenv().aimbotPunchOn then
+                   local currentTime = tick()
+                   if currentTime - getgenv().lastAimbotTime >= getgenv().aimbotDelay then
+                       local killerRoot = killer.HumanoidRootPart
+                       local camera = workspace.CurrentCamera
+                       camera.CFrame = CFrame.new(camera.CFrame.Position,killerRoot.Position)
+                       getgenv().fireRemotePunch()
+                       getgenv().lastAimbotTime = currentTime
+                   end
+               elseif getgenv().autoPunchOn then
+                   getgenv().fireRemotePunch()
+               end
+           end
+       end
+   end
+end)
+
+getgenv().punchAnimIds = {
+   "108911997126897","82137285150006","129843313690921",
+   "140703210927645","136007065400978","86096387000557",
+   "87259391926321","86709774283672","108807732150251",
+   "138040001965654"
+}
+
+getgenv().killerNames = {"c00lkidd","Jason","JohnDoe","1x1x1x1","Noli","Slasher"}
+getgenv().autoFallPunchOn = false
+getgenv().autoDashEnabled = false
+getgenv().DASH_SPEED = 100
+getgenv().MIN_TARGET_MAXHP = 300
+
+if not getgenv().originalNamecall then
+   getgenv().HookRules = {}
+   getgenv().originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+       local method = getnamecallmethod()
+       local args = {...}
+       if method == "FireServer" then
+           for _, rule in ipairs(getgenv().HookRules) do
+               if (not rule.remoteName or self.Name == rule.remoteName) then
+                   if not rule.blockedFirstArg or args[1] == rule.blockedFirstArg then
+                       if rule.block then
+                           return
+                       end
+                   end
+               end
+           end
+       end
+       return getgenv().originalNamecall(self, ...)
+   end)
+end
+
+getgenv().activateRemoteHook = function(remoteName, blockedFirstArg)
+   for _, rule in ipairs(getgenv().HookRules) do
+       if rule.remoteName == remoteName and rule.blockedFirstArg == blockedFirstArg then
+           return
+       end
+   end
+   table.insert(getgenv().HookRules, {
+       remoteName = remoteName,
+       blockedFirstArg = blockedFirstArg,
+       block = true
+   })
+end
+
+getgenv().deactivateRemoteHook = function(remoteName, blockedFirstArg)
+   for i, rule in ipairs(getgenv().HookRules) do
+       if rule.remoteName == remoteName and rule.blockedFirstArg == blockedFirstArg then
+           table.remove(getgenv().HookRules, i)
+           break
+       end
+   end
+end
+
+getgenv().EnableC00lkidd = function()
+   getgenv().activateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "C00lkiddCollision")
+end
+
+getgenv().DisableC00lkidd = function()
+   getgenv().deactivateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "C00lkiddCollision")
+end
+
+local globalEnv = getgenv()
+globalEnv.walkSpeed = 100
+globalEnv.toggle = false
+globalEnv.connection = nil
+
+function globalEnv.getCharacter()
+   return globalEnv.LocalPlayer.Character or globalEnv.LocalPlayer.CharacterAdded:Wait()
+end
+
+function globalEnv.onHeartbeat()
+   local player = globalEnv.LocalPlayer
+   local character = globalEnv.getCharacter()
+   if character.Name ~= "c00lkidd" then return end
+   
+   local char = globalEnv.getCharacter()
+   local rootPart = char:FindFirstChild("HumanoidRootPart")
+   local humanoid = char:FindFirstChildOfClass("Humanoid")
+   local lv = rootPart and rootPart:FindFirstChild("LinearVelocity")
+   
+   if not rootPart or not humanoid or not lv then return end
+   
+   if lv then
+       lv.VectorVelocity = Vector3.new(math.huge, math.huge, math.huge)
+       lv.Enabled = false
+   end
+
+   local stopMovement = false
+   local validValues = {
+       Timeout = true,
+       Collide = true,
+       Hit = true
+   }
+
+   if not stopMovement then
+       local lookVector = workspace.CurrentCamera.CFrame.LookVector
+       local moveDir = Vector3.new(lookVector.X, 0, lookVector.Z)
+       if moveDir.Magnitude > 0 then
+           moveDir = moveDir.Unit
+           rootPart.Velocity = Vector3.new(moveDir.X * globalEnv.walkSpeed, rootPart.Velocity.Y, moveDir.Z * globalEnv.walkSpeed)
+           rootPart.CFrame = CFrame.new(rootPart.Position, rootPart.Position + moveDir)
+       end
+   end
+end
+
+local function validTarget(player)
+   if not player or player == getgenv().LocalPlayer then return false end
+   local char = player.Character
+   if not char then return false end
+   local humanoid = char:FindFirstChildOfClass("Humanoid")
+   local hrp = char:FindFirstChild("HumanoidRootPart")
+   if not humanoid or not hrp then return false end
+   if humanoid.Health <= 0 then return false end
+   if humanoid.MaxHealth < getgenv().MIN_TARGET_MAXHP then return false end
+   local myChar = getgenv().LocalPlayer.Character
+   if not myChar then return false end
+   local myHrp = myChar:FindFirstChild("HumanoidRootPart")
+   if not myHrp then return false end
+   if (hrp.Position - myHrp.Position).Magnitude > getgenv().punchRange then return false end
+   return true
+end
+
+local function findClosestValidTarget()
+   local best, bestDist = nil, math.huge
+   local myChar = getgenv().LocalPlayer.Character
+   if not myChar then return nil end
+   local myHrp = myChar:FindFirstChild("HumanoidRootPart")
+   if not myHrp then return nil end
+   for _, p in pairs(getgenv().Players:GetPlayers()) do
+       if validTarget(p) then
+           local targetHrp = p.Character:FindFirstChild("HumanoidRootPart")
+           local d = (targetHrp.Position - myHrp.Position).Magnitude
+           if d < bestDist then
+               bestDist = d
+               best = p
+           end
+       end
+   end
+   return best
+end
+
+local function isPunchAnimationPlaying()
+   local char = getgenv().LocalPlayer.Character
+   if not char then return false end
+   local humanoid = char:FindFirstChildOfClass("Humanoid")
+   if not humanoid then return false end
+   local trackList = humanoid:GetPlayingAnimationTracks()
+   for _, track in ipairs(trackList) do
+       local animId = tostring(track.Animation.AnimationId)
+       for _, id in ipairs(getgenv().punchAnimIds) do
+           if animId == "rbxassetid://" .. id then
+               return true
+           end
+       end
+   end
+   return false
+end
+
+getgenv().RunService.Heartbeat:Connect(function()
+   local myChar = getgenv().LocalPlayer.Character
+   local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+   local gui = getgenv().LocalPlayer.PlayerGui:FindFirstChild("MainUI")
+   local punchBtn = gui and gui:FindFirstChild("AbilityContainer") and gui.AbilityContainer:FindFirstChild("Punch")
+   local charges = punchBtn and punchBtn:FindFirstChild("Charges")
+   
+   if getgenv().autoFallPunchOn and punchBtn and charges and myRoot then
+       local chargeCount = tonumber(charges.Text) or 0
+       if chargeCount >= 1 then
+           local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
+           if killersFolder then
+               for _, name in ipairs(getgenv().killerNames) do
+                   local killer = killersFolder:FindFirstChild(name)
+                   if killer and killer:FindFirstChild("HumanoidRootPart") then
+                       local root = killer.HumanoidRootPart
+                       if (root.Position - myRoot.Position).Magnitude <= getgenv().punchRange then
+                           myRoot.CFrame = myRoot.CFrame + Vector3.new(0, 8, 0)
+                           getgenv().fireRemotePunch()
+                           task.wait(0.01)
+                       end
+                   end
+               end
+           end
+       end
+   end
+   
+   if not getgenv().autoDashEnabled then return end
+   local char = getgenv().LocalPlayer.Character
+   if not char or char.Name ~= "Guest1337" then return end
+   if not isPunchAnimationPlaying() then return end
+   
+   local rootPart = char:FindFirstChild("HumanoidRootPart")
+   if not rootPart then return end
+   
+   local target = findClosestValidTarget()
+   if target and target.Character then
+       local tgtHrp = target.Character:FindFirstChild("HumanoidRootPart")
+       if tgtHrp then
+           local dir = (tgtHrp.Position - rootPart.Position)
+           local horiz = Vector3.new(dir.X, 0, dir.Z)
+           local dist = horiz.Magnitude
+           if dist > 3 then
+               local unit = horiz.Unit
+               local vel = unit * getgenv().DASH_SPEED
+               local currentY = rootPart.AssemblyLinearVelocity.Y
+               rootPart.AssemblyLinearVelocity = Vector3.new(vel.X, currentY, vel.Z)
+           end
+       end
+   end
+end)
+
+local MainGroup = Tabs.Block:AddLeftGroupbox('访客1337格挡')
+
+MainGroup:AddToggle("AutoBlockToggle",{
+   Text = "自动格挡",
+   Default = false,
+   Tooltip = "开启/关闭自动格挡",
+   Callback = function(Value)
+       getgenv().AutoBlockEnabled = Value
+   end,
+})
+
+MainGroup:AddToggle("InnerCircleToggle",{
+   Text = "内圈显示(格挡范围)",
+   Default = false,
+   Tooltip = "显示杀手内圈格挡检测范围",
+   Callback = function(Value)
+       getgenv().InnerCircleVisible = Value
+       getgenv().RefreshKillerCircles()
+   end,
+})
+
+MainGroup:AddToggle("OuterCircleToggle",{
+   Text = "外圈显示(拳击范围)",
+   Default = false,
+   Tooltip = "显示杀手外圈拳击检测范围",
+   Callback = function(Value)
+       getgenv().OuterCircleVisible = Value
+       getgenv().RefreshKillerCircles()
+   end,
+})
+
+MainGroup:AddDropdown("VisualizationModeDropdown",{
+   Values = {"指南针", "固定", "Box", "球体"},
+   Default = 1,
+   Multi = false,
+   Text = "可视化模式",
+   Tooltip = "选择可视化显示模式\n指南针: 范围朝向玩家\n固定: 范围跟随杀手面向\nBox: 长方形检测范围\n球体: 球形检测范围",
+   Callback = function(Value)
+       getgenv().UpdateVisualizationMode(Value)
+   end
+})
+
+MainGroup:AddToggle("FacingCheck",{
+   Text = "玩家面向检测",
+   Default = false,
+   Tooltip = "仅在面向杀手时格挡",
+   Callback = function(Value)
+       getgenv().FacingCheckEnabled = Value
+   end,
+})
+
+MainGroup:AddToggle("KillerFacingCheck",{
+   Text = "杀手面向检测",
+   Default = false,
+   Tooltip = "仅在杀手面向玩家时格挡",
+   Callback = function(Value)
+       getgenv().KillerFacingCheckEnabled = Value
+   end,
+})
+
+MainGroup:AddToggle("WallCheck",{
+   Text = "墙体检测",
+   Default = false,
+   Tooltip = "检测是否有墙体遮挡",
+   Callback = function(Value)
+       getgenv().wallCheckEnabled = Value
+   end,
+})
+
+MainGroup:AddSlider("SenseRange",{
+   Text = "格挡范围",
+   Default = 18,
+   Min = 5,
+   Max = 50,
+   Rounding = 1,
+   Tooltip = "格挡检测的距离范围",
+   Callback = function(Value)
+       getgenv().SenseRange = Value
+       getgenv().SenseRangeSq = Value * Value
+   end,
+})
+
+MainGroup:AddSlider("PlayerFacingAngle",{
+   Text = "玩家面向角度",
+   Default = 90,
+   Min = 30,
+   Max = 180,
+   Rounding = 1,
+   Tooltip = "玩家面向杀手的角度检测",
+   Callback = function(Value)
+       getgenv().PlayerFacingAngle = Value
+   end,
+})
+
+MainGroup:AddSlider("KillerFacingAngle",{
+   Text = "杀手面向角度",
+   Default = 90,
+   Min = 30,
+   Max = 180,
+   Rounding = 1,
+   Tooltip = "杀手面向玩家的角度检测",
+   Callback = function(Value)
+       getgenv().KillerFacingAngle = Value
+   end,
+})
+
+local BoxModeGroup = Tabs.Block:AddLeftGroupbox('Box模式')
+
+BoxModeGroup:AddSlider("BoxLength",{
+   Text = "Box长度",
+   Default = 15,
+   Min = 5,
+   Max = 50,
+   Rounding = 1,
+   Tooltip = "Box模式的长度(仅Box模式有效)",
+   Callback = function(Value)
+       getgenv().BoxLength = Value
+   end,
+})
+
+BoxModeGroup:AddSlider("BoxWidth",{
+   Text = "Box宽度",
+   Default = 6,
+   Min = 2,
+   Max = 30,
+   Rounding = 1,
+   Tooltip = "Box模式的宽度(仅Box模式有效)",
+   Callback = function(Value)
+       getgenv().BoxWidth = Value
+   end,
+})
+
+BoxModeGroup:AddSlider("BoxTransparency",{
+   Text = "Box透明度",
+   Default = 0.7,
+   Min = 0,
+   Max = 1,
+   Rounding = 2,
+   Tooltip = "Box的透明度(0=完全不透明,1=完全透明)",
+   Callback = function(Value)
+       getgenv().BoxTransparency = Value
+       getgenv().UpdateBoxColors()
+   end,
+})
+
+BoxModeGroup:AddLabel("Box安全颜色 (玩家在范围内):")
+
+BoxModeGroup:AddSlider("BoxSafeColorR",{
+   Text = "红色 (R)",
+   Default = 0,
+   Min = 0,
+   Max = 255,
+   Rounding = 0,
+   Tooltip = "Box安全状态的红色值",
+   Callback = function(Value)
+       local current = getgenv().BoxSafeColor
+       getgenv().BoxSafeColor = Color3.fromRGB(Value, current.G * 255, current.B * 255)
+   end,
+})
+
+BoxModeGroup:AddSlider("BoxSafeColorG",{
+   Text = "绿色 (G)",
+   Default = 255,
+   Min = 0,
+   Max = 255,
+   Rounding = 0,
+   Tooltip = "Box安全状态的绿色值",
+   Callback = function(Value)
+       local current = getgenv().BoxSafeColor
+       getgenv().BoxSafeColor = Color3.fromRGB(current.R * 255, Value, current.B * 255)
+   end,
+})
+
+BoxModeGroup:AddSlider("BoxSafeColorB",{
+   Text = "蓝色 (B)",
+   Default = 0,
+   Min = 0,
+   Max = 255,
+   Rounding = 0,
+   Tooltip = "Box安全状态的蓝色值",
+   Callback = function(Value)
+       local current = getgenv().BoxSafeColor
+       getgenv().BoxSafeColor = Color3.fromRGB(current.R * 255, current.G * 255, Value)
+   end,
+})
+
+BoxModeGroup:AddLabel("Box危险颜色 (玩家不在范围内):")
+
+BoxModeGroup:AddSlider("BoxDangerColorR",{
+    Text = "红色 (R)",
+    Default = 255,
+    Min = 0,
+    Max = 255,
+    Rounding = 0,
+    Tooltip = "Box危险状态的红色值",
+    Callback = function(Value)
+        local current = getgenv().BoxDangerColor
+        getgenv().BoxDangerColor = Color3.fromRGB(Value, current.G * 255, current.B * 255)
+    end,
+})
+
+BoxModeGroup:AddSlider("BoxDangerColorG",{
+    Text = "绿色 (G)",
+    Default = 0,
+    Min = 0,
+    Max = 255,
+    Rounding = 0,
+    Tooltip = "Box危险状态的绿色值",
+    Callback = function(Value)
+        local current = getgenv().BoxDangerColor
+        getgenv().BoxDangerColor = Color3.fromRGB(current.R * 255, Value, current.B * 255)
+    end,
+})
+
+BoxModeGroup:AddSlider("BoxDangerColorB",{
+    Text = "蓝色 (B)",
+    Default = 0,
+    Min = 0,
+    Max = 255,
+    Rounding = 0,
+    Tooltip = "Box危险状态的蓝色值",
+    Callback = function(Value)
+        local current = getgenv().BoxDangerColor
+        getgenv().BoxDangerColor = Color3.fromRGB(current.R * 255, current.G * 255, Value)
+    end,
+})
+
+-- ==========================
+-- 🥊 战斗与拳击部分
+-- ==========================
+
+local CombatGroup = Tabs.Block:AddRightGroupbox('拳击')
+
+CombatGroup:AddToggle("AutoPunch", {
+    Text = "自动拳击",
+    Default = false,
+    Tooltip = "自动检测范围内的敌人并拳击",
+    Callback = function(Value)
+        getgenv().autoPunchOn = Value
+    end
+})
+
+CombatGroup:AddToggle("AimbotPunch", {
+    Text = "自瞄拳击",
+    Default = false,
+    Tooltip = "自动对准目标进行拳击",
+    Callback = function(Value)
+        getgenv().aimbotPunchOn = Value
+    end
+})
+
+CombatGroup:AddSlider("PunchRange", {
+    Text = "拳击范围",
+    Default = 50,
+    Min = 10,
+    Max = 100,
+    Rounding = 1,
+    Tooltip = "拳击检测距离",
+    Callback = function(Value)
+        getgenv().punchRange = Value
+    end
+})
+
+CombatGroup:AddSlider("AimbotDelay", {
+    Text = "自瞄拳击间隔",
+    Default = 0.1,
+    Min = 0.01,
+    Max = 1,
+    Rounding = 2,
+    Tooltip = "自瞄拳击之间的延迟时间（秒）",
+    Callback = function(Value)
+        getgenv().aimbotDelay = Value
+    end
+})
+
+CombatGroup:AddToggle("AutoFallPunch", {
+    Text = "空中连拳",
+    Default = false,
+    Tooltip = "在空中自动触发拳击",
+    Callback = function(Value)
+        getgenv().autoFallPunchOn = Value
+    end
+})
+
+-- ==========================
+-- 🧠 高级设置部分
+-- ==========================
+
+local AdvancedGroup = Tabs.Block:AddRightGroupbox('高级')
+
+AdvancedGroup:AddToggle("HDPullToggle", {
+    Text = "格挡拉近（HDPull）",
+    Default = false,
+    Tooltip = "格挡时自动拉近到敌人",
+    Callback = function(Value)
+        getgenv().HDPullEnabled = Value
+    end
+})
+
+AdvancedGroup:AddSlider("HDSpeed", {
+    Text = "拉近速度",
+    Default = 12,
+    Min = 5,
+    Max = 50,
+    Rounding = 1,
+    Tooltip = "格挡时向敌人移动的速度",
+    Callback = function(Value)
+        getgenv().HDSpeed = Value
+    end
+})
+
+AdvancedGroup:AddToggle("AutoDash", {
+    Text = "自动冲刺",
+    Default = false,
+    Tooltip = "拳击时自动向敌人冲刺",
+    Callback = function(Value)
+        getgenv().autoDashEnabled = Value
+    end
+})
+
+AdvancedGroup:AddSlider("DashSpeed", {
+    Text = "冲刺速度",
+    Default = 100,
+    Min = 50,
+    Max = 500,
+    Rounding = 1,
+    Tooltip = "自动冲刺时的速度",
+    Callback = function(Value)
+        getgenv().DASH_SPEED = Value
+    end
+})
+--]]
+
 local SM = Tabs.FightingKilling:AddLeftGroupbox('杀戮功能[杀手]')
 
 local Players = game:GetService("Players")
@@ -8409,7 +9763,6 @@ SM:AddToggle("FilterKillersToggle", {
         FilterKillers = state
     end
 })
-
 
 SM:AddToggle("WallCheck", {
     Text = "墙壁检测",

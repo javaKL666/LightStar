@@ -50,7 +50,7 @@ local Window = Library:CreateWindow({
 	Footer = "LightStar团队脚本-discord.gg/BW55cR7Z [来源Nolsaken]",
 	Icon = 106397684977541,
 })
-
+--biohazard
 local Tabs = {
     new = Window:AddTab('主持','external-link','公告&信息'),
     Main = Window:AddTab('玩家','user','这是主要的!!!'),
@@ -259,7 +259,7 @@ local information = Tabs.new:AddLeftGroupbox('信息','info')
     
 information:AddDivider()
 
-information:AddLabel("欢迎LightStar者用户lol")
+information:AddLabel("欢迎用户"..game.Players.LocalPlayer.DisplayName.." ("..game.Players.LocalPlayer.Name..")"
 information:AddLabel("支持是我们的最大的贡献😜")
 
 information:AddDivider()
@@ -883,7 +883,7 @@ Camera:AddToggle("EnableFieldOfView",{
     end
 })
 
-local Skill = Tabs.Main:AddRightGroupbox("能力")
+local Skill = Tabs.Main:AddRightGroupbox("能力","biohazard")
 
 local ReplicatedStorage = ReplicatedStorage or game:GetService("ReplicatedStorage")
 local lp = lp or game:GetService("Players").LocalPlayer
