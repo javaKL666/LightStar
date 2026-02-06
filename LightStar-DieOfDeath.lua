@@ -259,7 +259,7 @@ local information = Tabs.new:AddLeftGroupbox('信息','info')
     
 information:AddDivider()
 
-information:AddLabel("欢迎用户"..game.Players.LocalPlayer.DisplayName.." ("..game.Players.LocalPlayer.Name..")"
+information:AddLabel("欢迎用户"..game.Players.LocalPlayer.DisplayName.." ("..game.Players.LocalPlayer.Name..")")
 information:AddLabel("支持是我们的最大的贡献😜")
 
 information:AddDivider()
