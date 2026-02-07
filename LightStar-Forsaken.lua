@@ -151,6 +151,21 @@ information:AddLabel("昵称 : "..game.Players.LocalPlayer.DisplayName)
 information:AddLabel("用户年龄 : "..game.Players.LocalPlayer.AccountAge.." 天")
 --]]
 
+local UpdateText = 
+"新更新<b><font color=\"rgb(0, 255, 255)\">LightStar脚本</font></b>内容\n=======新更新=======\n"
+
+-- 添加<b><font color=\"rgb(0, 255, 0)\">功能</font></b>功能了
+
+local Update = Tabs.new
+
+Update:UpdateWarningBox({
+    Title = "=====<b><font color=\"rgb(0, 255, 0)\">更新&日志&脚本</font></b>======",
+    Text = UpdateText,
+    IsNormal = true, -- 错误盒子 = false, 正常盒子 = true
+    Visible = true,
+    LockSize = true,
+})
+
 local information = Tabs.new:AddLeftGroupbox('信息','info')
 
     local Players = game:GetService('Players')
@@ -222,21 +237,6 @@ local Contributor = Tabs.new:AddRightGroupbox('鸣谢&贡献者')
 Contributor:AddLabel("[<b><font color=\"rgb(0, 0, 255)\">JackEyeKL</font></b>] - 脚本所有者")
 
 Contributor:AddLabel("[<b><font color=\"rgb(128, 0, 128)\">Yuxingchen</font></b>] - 提供Nol原脚本终极源码")
-
-local LightStar = Tabs.new:AddRightGroupbox('日志','users')
-
-LightStar:AddLabel("新更新<b><font color=\"rgb(0, 255, 0)\">LightStar脚本</font></b>内容 * 0")
-
-LightStar:AddDivider()
-
-LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">新的自动修机功能</font></b>功能了")
-
-LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">c00lkidd反效果</font></b>功能了")
-
-LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">其他反效果</font></b>功能了")
-
---LightStar:AddLabel("添加<b><font color=\"rgb(0, 255, 0)\">功能</font></b>功能了")
---]]
 
 local KillerSurvival = Tabs.Main:AddLeftGroupbox("玩家","user")
 
