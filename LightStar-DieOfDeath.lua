@@ -14,8 +14,8 @@ local repo = 'https://raw.githubusercontent.com/javaKL666/Obsidian/main/'
 local Library = loadstring(game:HttpGet(repo .. "UseLibrary.lua"))()
 --]]
 local Library = loadstring(game:HttpGet(repo .. "DearReg.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "SaveManager.lua"))()
 
 Library:SetWatermarkVisibility(true)
 
