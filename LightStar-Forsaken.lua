@@ -103,6 +103,15 @@ local Tabs = {
     Addons = Window:AddTab("插件","boxes",'这是功能添加!!!'),
 }
 
+local function Notify(Title, Text, Duration)
+    Library:Notify({
+        Title = Title,
+        Description = Text,
+        Time = Duration,
+    })
+end
+_G._Notify = Notify
+
 Addons = Tabs.Addons:AddLeftGroupbox('插件&附加','blocks')
 
 local _env = getgenv and getgenv() or {}
@@ -868,6 +877,9 @@ ZZ:AddSlider("JasonAutoRagingPaceRange", {
 
 local SM = Tabs.Main:AddLeftGroupbox('背刺[TweTime]')
 
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
+
 function hasNotification(text)
     for i, v in pairs(localPlayer.PlayerGui.Notis:GetChildren()) do
         if string.find(v.Text:lower(), text) then
@@ -908,7 +920,7 @@ SM:AddToggle("TweTimeAutoDagger", {
     Default = false,
     Callback = function(cool)
         task.spawn(function()
-            while Toggles.AutoDagger.Value and task.wait(0.1) do
+            while Toggles.TweTimeAutoDagger.Value and task.wait(0.1) do
                 if hasAbilityReady("Dagger") and isSurvivor then
                     local suc, res = pcall(backstab, killerModel)
                     if not suc then
@@ -925,8 +937,8 @@ SM:AddToggle("TweTimeDaggerAura", {
     Default = false,
     Callback = function(cool)
         task.spawn(function()
-            while Toggles.DaggerAura.Value and task.wait(0.1) do
-                if not Toggles.AutoDagger.Value and hasAbilityReady("Dagger") and isSurvivor then
+            while Toggles.TweTimeDaggerAura.Value and task.wait(0.1) do
+                if not Toggles.TweTimeAutoDagger.Value and hasAbilityReady("Dagger") and isSurvivor then
                     local suc, res = pcall(backstabClose, killerModel)
                     if not suc then
                         warn("error when backstabbing near killer:", res)
@@ -1815,6 +1827,7 @@ ZZ:AddButton({
     end
 })
 
+--[[
 local AutoChanceCoinFlip = Tabs.Main:AddRightGroupbox('自动Chance硬币')
 
 local replicatedStorage = game:GetService("ReplicatedStorage")
@@ -1842,7 +1855,7 @@ AutoChanceCoinFlip:AddToggle("AutoChanceCoinFlip", {
         end)
     end
 })
-
+--]]
 
 
 
@@ -12221,7 +12234,7 @@ MenuGroup:AddButton("摧毁界面", function()
     Library:Unload()  
 end)
 
-local AddonsWarningText = "<font color=\"rgb(255, 0, 0)\">插件有一定的危险性 (LightStar/Addons)</font>"
+local AddonsWarningText = "小心!您放入(LightStar/Addons)目录的任何脚本都会被执行器执行 我们建议您仅使用来自可信来源或开源的插件 对于播件造成的任何损害 我们概不负责 特此警告!"
 
 local AddonsWarning = Tabs.Addons
 
