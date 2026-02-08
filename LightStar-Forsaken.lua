@@ -103,15 +103,6 @@ local Tabs = {
     Addons = Window:AddTab("插件","boxes",'这是功能添加!!!'),
 }
 
-local function Notify(Title, Text, Duration)
-    Library:Notify({
-        Title = Title,
-        Description = Text,
-        Time = Duration,
-    })
-end
-_G._Notify = Notify
-
 Addons = Tabs.Addons:AddLeftGroupbox('插件&附加','blocks')
 
 local _env = getgenv and getgenv() or {}
