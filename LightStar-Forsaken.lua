@@ -82,7 +82,10 @@ local Tabs = {
     PhysicalStrength = Window:AddTab('体力','zap','让你奔跑体力最大!!!'),
     Generator = Window:AddTab('发动机','printer','让你修发动机更快!!!'),
     Settings = Window:AddTab("设置","settings",'设置&调试'),
+    Addons = Window:AddTab("插件","boxes",'这是功能添加!!!'),
 }
+
+Addons = Tabs.Addons:AddLeftGroupbox('插件&附加','blocks')
 
 local _env = getgenv and getgenv() or {}
 
@@ -232,7 +235,7 @@ information:AddLabel("谢谢你的观看！！！")
 
 --]]
 
-local Contributor = Tabs.new:AddRightGroupbox('鸣谢&贡献者')
+local Contributor = Tabs.new:AddRightGroupbox('鸣谢&贡献者','handshake')
 
 Contributor:AddLabel("[<b><font color=\"rgb(0, 0, 255)\">JackEyeKL</font></b>] - 脚本所有者")
 
@@ -12200,6 +12203,99 @@ MenuGroup:AddButton("摧毁界面", function()
     Library:Unload()  
 end)
 
+local AddonsWarningText = "<font color=\"rgb(255, 0, 0)\">插件有一定的危险性 LightStar/Addons</font>"
+
+local AddonsWarning = Tabs.Addons
+
+AddonsWarning:UpdateWarningBox({
+    Title = "LightStar",
+    Text = AddonsWarningText,
+    IsNormal = false, -- 错误盒子 = false, 正常盒子 = true
+    Visible = true,
+    LockSize = true,
+})
+
+local HubFolder = "LightStar"
+local addonFolder = HubFolder.."/Addons"
+
+if not isfolder(HubFolder) then
+    makefolder(HubFolder)
+end
+
+if not isfolder(addonFolder) then
+    makefolder(addonFolder)
+end
+
+AddonsFolder = AddonsFolder or {}
+AddonsFolder.Addons = {}
+
+for _, file in ipairs(listfiles(addonFolder)) do
+    if file:sub(-4) == ".lua" or file:sub(-4) == ".txt" then
+        local success, addon = pcall(function()
+            return loadstring(readfile(file))()
+        end)
+        if success and type(addon) == "table" then
+            table.insert(AddonsFolder.Addons, addon)
+            
+                Addons:AddToggle(addon.Text, {
+                    Text = addon.Text,
+                    Default = addon.Default,
+                    Tooltip = addon.Tooltip.Text,
+                    Callback = addon.Callback
+                })
+                
+                Addons:AddButton(addon.Text, {
+	             Text = addon.Text,
+	             Tooltip = addon.Tooltip.Text,
+	             Func = addon.Function
+                })
+                
+                Addons:AddLabel(addon.Text)
+                
+                Addons:AddDivider(addon.Text)
+                
+                Addons:AddSlider(addon.Text, {
+	            Text = addon.Text,
+	            Default = addon.Default.Value,
+	            Min = addon.Min.Value,
+	            Max = addon.Max.Value,
+	            Rounding = addon.Rounding.Value,
+	            Tooltip = addon.Tooltip.Text,
+	            Callback = addon.Callback
+                })
+                
+                Addons:AddInput(addon.Text, {
+	            Default = addon.Text,
+	            Numeric = addon.Numeric,
+	            Finished = addon.Finished,
+	            ClearTextOnFocus = addon.ClearTextOnFocus,
+	            Text = addon.Text,
+	            Tooltip = addon.Tooltip.Text,
+	            Placeholder = addon.Placeholder.Text,
+	            Callback = addon.Callback
+                })
+                
+                Addons:AddDropdown(addon.Text, {
+	            Values = addon.Values,
+	            Default = addon.Values.Default,
+	            Multi = addon.Multi,
+	            Text = addon.Text,
+	            Tooltip = addon.Tooltip.Text,
+	            Searchable = addon.Searchable,
+	            Callback = addon.Callback
+                })
+            end
+        
+    end
+end
+
+function CreateFolder(f)
+if not isfolder(f) then makefolder(f) repeat task.wait() until isfolder(f) end
+end
+function CreateFile(f,d)
+if not isfile(f) then writefile(f,d) repeat task.wait() until isfile(f) end
+end
+CreateFolder("LightStar/Addons")
 
 ThemeManager:SetLibrary(Library)  
 SaveManager:SetLibrary(Library)   
