@@ -32,7 +32,7 @@ local SaveManager
 if UIStyle == "LinoriaLib" then
 SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 else
-SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+SaveManager = loadstring(game:HttpGet(repo .. "SaveManager.lua"))()
 end
 
 Library:SetWatermarkVisibility(true)
@@ -453,14 +453,14 @@ KillerSurvival:AddToggle('AlwaysShowChat', {
         end
 })
 
-KillerSurvival:AddButton("FixLag", {
+KillerSurvival:AddButton({
     Text = "低画质",
     Func = function()
             loadstring(game:HttpGet('https://raw.githubusercontent.com/vexroxd/My-Script-/main/roblox%20fps%20unlocker%20script.lua'))()
    end
 })
 
-KillerSurvival:AddButton("DeceiveForgedUserMode", {
+KillerSurvival:AddButton({
     Text = "<font color=\"rgb(0, 0, 255)\">欺骗伪造用户模式</font>",
     Tooltip = "拍视频和直播时点击它 你的信息 的 昵称 和 用户名 改变了!!!可以让别人挂不了你 相当于欺骗!",
     Func = function()
@@ -1715,7 +1715,7 @@ Lighting:AddToggle("启用功能",{
 
 local Teleport = Tabs.Main:AddRightGroupbox('传送')
 
-Teleport:AddButton("TeleportKliier", {
+Teleport:AddButton({
     Text = "传送杀手",
     Func = function ()
         if playingState == "Spectating" then
@@ -1731,7 +1731,7 @@ Teleport:AddButton("TeleportKliier", {
     end
 })
 
-Teleport:AddButton("TeleportSurvivor", {
+Teleport:AddButton({
     Text = "传送随机幸存者",
     Func = function()
         if playingState == "Spectating" then
@@ -1788,7 +1788,7 @@ ZZ:AddToggle("ItemsAura", {
     end
 })
 
-ZZ:AddButton("TeleportItems", {
+ZZ:AddButton({
     Text = "传送物品",
     Func = function()
         pcall(function()
@@ -12114,7 +12114,7 @@ Generator:AddToggle("AutoStartGenerator", {
     end
 })
 
-Generator:AddButton("TeleportGenerator", {
+Generator:AddButton({
     Text = '传送到发电机',
     Func = function()
         local player = game.Players.LocalPlayer
@@ -12221,7 +12221,7 @@ MenuGroup:AddButton("摧毁界面", function()
     Library:Unload()  
 end)
 
-local AddonsWarningText = "<font color=\"rgb(255, 0, 0)\">插件有一定的危险性 LightStar/Addons</font>"
+local AddonsWarningText = "<font color=\"rgb(255, 0, 0)\">插件有一定的危险性 (LightStar/Addons)</font>"
 
 local AddonsWarning = Tabs.Addons
 
@@ -12262,6 +12262,7 @@ for _, file in ipairs(listfiles(addonFolder)) do
                     Callback = addon.Callback
                 })
                 
+
                 Addons:AddButton(addon.Text, {
 	             Text = addon.Text,
 	             Tooltip = addon.Tooltip.Text,
@@ -12302,6 +12303,7 @@ for _, file in ipairs(listfiles(addonFolder)) do
 	            Searchable = addon.Searchable,
 	            Callback = addon.Callback
                 })
+      
             end
         
     end

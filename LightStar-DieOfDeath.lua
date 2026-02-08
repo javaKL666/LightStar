@@ -32,7 +32,7 @@ local SaveManager
 if UIStyle == "LinoriaLib" then
 SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 else
-SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+SaveManager = loadstring(game:HttpGet(repo .. "SaveManager.lua"))()
 end
 
 Library:SetWatermarkVisibility(true)
@@ -450,7 +450,7 @@ KillerSurvival:AddToggle("SilentAimbot(Killer)", {
     end
 })
 
-KillerSurvival:AddButton("FixLag", {
+KillerSurvival:AddButton({
     Text = "低画质",
     Func = function()
             loadstring(game:HttpGet('https://raw.githubusercontent.com/vexroxd/My-Script-/main/roblox%20fps%20unlocker%20script.lua'))()
@@ -3254,7 +3254,7 @@ MenuGroup:AddButton("摧毁界面", function()
     Library:Unload()  
 end)
 
-local AddonsWarningText = "<font color=\"rgb(255, 0, 0)\">插件有一定的危险性 LightStar/Addons</font>"
+local AddonsWarningText = "小心!您放入(LightStar/Addons)目录的任何脚本都会被执行器执行 我们建议您仅使用来自可信来源或开源的插件 对于播件造成的任何损害 我们概不负责 特此警告!"
 
 local AddonsWarning = Tabs.Addons
 
@@ -3295,6 +3295,7 @@ for _, file in ipairs(listfiles(addonFolder)) do
                     Callback = addon.Callback
                 })
                 
+
                 Addons:AddButton(addon.Text, {
 	             Text = addon.Text,
 	             Tooltip = addon.Tooltip.Text,
@@ -3335,6 +3336,7 @@ for _, file in ipairs(listfiles(addonFolder)) do
 	            Searchable = addon.Searchable,
 	            Callback = addon.Callback
                 })
+      
             end
         
     end
