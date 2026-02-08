@@ -2,20 +2,38 @@
 
 
 
+local repo
+if UIStyle == "LinoriaLib" then
+repo = 'https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/'
+else
+repo = 'https://raw.githubusercontent.com/javaKL666/Obsidian/main/'
+end
 
-local repo = 'https://raw.githubusercontent.com/javaKL666/Obsidian/main/'
 
 
 
 
 
+local Library
+if UIStyle == "LinoriaLib" then
+Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+else
+Library = loadstring(game:HttpGet(repo .. "DearReg.lua"))()
+end
 
---[[
-local Library = loadstring(game:HttpGet(repo .. "UseLibrary.lua"))()
---]]
-local Library = loadstring(game:HttpGet(repo .. "DearReg.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "SaveManager.lua"))()
+local ThemeManager 
+if UIStyle == "LinoriaLib" then
+ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+else
+ThemeManager = loadstring(game:HttpGet(repo .. "ThemeManager.lua"))()
+end
+
+local SaveManager
+if UIStyle == "LinoriaLib" then
+SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+else
+SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+end
 
 Library:SetWatermarkVisibility(true)
 
