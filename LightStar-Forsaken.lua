@@ -866,7 +866,7 @@ ZZ:AddSlider("JasonAutoRagingPaceRange", {
 })
 --]]
 
-local SM = Tabs.Main:AddLeftGroupbox('背刺[TweTime]')
+local SM = Tabs.Main:AddLeftGroupbox('背刺[TweTime]','volleyball')
 
 local replicatedStorage = game:GetService("ReplicatedStorage")
 local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
@@ -950,7 +950,7 @@ SM:AddSlider("TweTimeBackstabRange", {
 })
 
 --[[
-local ZZ = Tabs.Main:AddLeftGroupbox('<b><font color=\"rgb(255, 0, 0)\">飞行[最危险]</font></b>')
+local ZZ = Tabs.Main:AddLeftGroupbox('<b><font color=\"rgb(255, 0, 0)\">飞行[最危险]</font></b>','plane')
 
 local RunService = game:GetService("RunService") --获取玩家操控位置函数
 local CFSpeed = 50
@@ -1045,7 +1045,7 @@ ZZ:AddSlider("CFlySpeed", {
 })
 --]]
 --[[
-local Game = Tabs.Main:AddLeftGroupbox('对局游戏')
+local Game = Tabs.Main:AddLeftGroupbox('对局游戏','gamepad-2')
 
 local hideBarConnection = nil
 local customIconId = "12549056837" 
@@ -1115,7 +1115,7 @@ Game:AddToggle('HiddenGamePlayerColumn', {
 })
 --]]
 
-local AntiBan = Tabs.Main:AddRightGroupbox("绕过反作弊")
+local AntiBan = Tabs.Main:AddRightGroupbox("绕过反作弊","heater")
 
 do
     local Players = game:GetService("Players")
@@ -1584,7 +1584,7 @@ AntiBan:AddToggle("AntiBanV2", {
 end
 
 local MainTabbox = Tabs.Main:AddRightTabbox()
-local Camera = MainTabbox:AddTab("相机")
+local Camera = MainTabbox:AddTab("相机","camera")
 
 Camera:AddToggle('FreeZoom', {
     Text = "自由缩放",
@@ -1647,7 +1647,7 @@ Camera:AddToggle("EnableFieldOfView",{
     end
 })
 
-local Lighting = MainTabbox:AddTab("亮度")
+local Lighting = MainTabbox:AddTab("亮度","sun")
 
 Lighting:AddSlider("BrightnessValue",{
     Text = "亮度数值",
@@ -1716,7 +1716,7 @@ Lighting:AddToggle("启用功能",{
     
 })
 
-local Teleport = Tabs.Main:AddRightGroupbox('传送')
+local Teleport = Tabs.Main:AddRightGroupbox('传送',"clapperboard")
 
 Teleport:AddButton({
     Text = "传送杀手",
@@ -1750,7 +1750,7 @@ Teleport:AddButton({
     end
 })
 
-local ZZ = Tabs.Main:AddRightGroupbox('物品')
+local ZZ = Tabs.Main:AddRightGroupbox('物品','shopping-basket')
 
 ZZ:AddToggle("ItemsAura", {
     Text = "物品光环",
@@ -1873,7 +1873,7 @@ local jasonMaxDistance = 50
 
 
 -- 创建UI
-local SB = Tabs.Aimbot:AddLeftGroupbox('幸存者')
+local SB = Tabs.Aimbot:AddLeftGroupbox('幸存者','locate-fixed')
 
 -- Chance自瞄距离滑块
 SB:AddSlider('ChanceAimbotDistance', {
@@ -2085,7 +2085,7 @@ local function shedletskyAimbot(state)
 end
 
 -- 杀手UI
-local SC = Tabs.Aimbot:AddRightGroupbox('杀手')
+local SC = Tabs.Aimbot:AddRightGroupbox('杀手','locate-fixed')
 
 -- 小孩自瞄距离滑块
 SC:AddSlider('c00lkiddAimbotDistance', {
@@ -2379,7 +2379,7 @@ SC:AddToggle('JasonAimbot', {
     Callback = jasonaimbot
 })
 
-local SpecialAimbot = Tabs.Aimbot:AddLeftGroupbox("角色自瞄(静默)")
+local SpecialAimbot = Tabs.Aimbot:AddLeftGroupbox("角色自瞄(静默)",'locate')
 
 -- 默认距离设置
 local defaultAimDistance = 100
@@ -2572,7 +2572,7 @@ local function chanceAimbot(state)
     end
 end
 
-local ZZ = Tabs.Aimbot:AddLeftGroupbox('自瞄杀手')
+local ZZ = Tabs.Aimbot:AddLeftGroupbox('自瞄杀手','crosshair')
 
 local aimSettings = {
     distance = 100,
@@ -2772,7 +2772,7 @@ ZZ:AddToggle("AimbotToggle", {
     end
 })
 
-local ZZ = Tabs.Aimbot:AddRightGroupbox('自瞄幸存者')
+local ZZ = Tabs.Aimbot:AddRightGroupbox('自瞄幸存者','crosshair')
 
 local aimSettings = {
     distance = 100,
@@ -2970,7 +2970,7 @@ ZZ:AddToggle("AimbotToggle", {
     end
 })
 
-local Visual = Tabs.Esp:AddRightGroupbox("高亮ESP")
+local Visual = Tabs.Esp:AddRightGroupbox("高亮ESP",'ratio')
 
 -- 高亮ESP设置
 local HighlightSettings = {
@@ -3187,148 +3187,7 @@ Visual:AddSlider("OutlineTransparency", {
     end
 })
 
-local Visual = Tabs.Esp:AddRightGroupbox("假NoliESP")
-
-local NoliHighlight = {
-    Enabled = false,
-    FillTransparency = 0.5,
-    OutlineTransparency = 0,
-    connection = nil,
-    highlights = {},
-    labels = {}
-}
-
-local function cleanupAll()
-    for _, highlight in pairs(NoliHighlight.highlights) do
-        if highlight and highlight.Parent then
-            highlight:Destroy()
-        end
-    end
-    NoliHighlight.highlights = {}
-    
-    for _, label in pairs(NoliHighlight.labels) do
-        if label and label.Parent then
-            label:Destroy()
-        end
-    end
-    NoliHighlight.labels = {}
-end
-
-local function isFakeNoli(model)
-    local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart then return false end
-    
-    for _, sound in ipairs(humanoidRootPart:GetChildren()) do
-        if sound:IsA("Sound") then
-            return false
-        end
-    end
-    return true
-end
-
-local function updateHighlights()
-    local killersFolder = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-    
-    if killersFolder and NoliHighlight.Enabled then
-        local noliModel = killersFolder:FindFirstChild("Noli")
-        if noliModel and noliModel:IsA("Model") and isFakeNoli(noliModel) then
-            if not NoliHighlight.highlights[noliModel] then
-                local highlight = Instance.new("Highlight")
-                highlight.Parent = game.CoreGui
-                NoliHighlight.highlights[noliModel] = highlight
-            end
-            
-            local highlight = NoliHighlight.highlights[noliModel]
-            highlight.Adornee = noliModel
-            highlight.FillColor = Color3.fromRGB(128, 0, 128)
-            highlight.OutlineColor = Color3.fromRGB(128, 0, 128)
-            highlight.FillTransparency = NoliHighlight.FillTransparency
-            highlight.OutlineTransparency = NoliHighlight.OutlineTransparency
-            
-            if not NoliHighlight.labels[noliModel] then
-                local billboardGui = Instance.new("BillboardGui")
-                local textLabel = Instance.new("TextLabel")
-                
-                billboardGui.Name = "NoliLabel"
-                billboardGui.Adornee = noliModel:FindFirstChild("Head") or noliModel:FindFirstChild("HumanoidRootPart") or noliModel.PrimaryPart
-                billboardGui.Size = UDim2.new(0, 200, 0, 50)
-                billboardGui.StudsOffset = Vector3.new(0, 2, 0)
-                billboardGui.AlwaysOnTop = true
-                
-                textLabel.Size = UDim2.new(1, 0, 1, 0)
-                textLabel.Text = "[假Noli]"
-                textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                textLabel.TextScaled = true
-                textLabel.BackgroundTransparency = 1
-                textLabel.Font = Enum.Font.SourceSansBold
-                textLabel.TextStrokeTransparency = 0
-                textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-                
-                textLabel.Parent = billboardGui
-                billboardGui.Parent = game.CoreGui
-                
-                NoliHighlight.labels[noliModel] = billboardGui
-            end
-        end
-    end
-    
-    for model, highlight in pairs(NoliHighlight.highlights) do
-        if not model or not model.Parent then
-            highlight:Destroy()
-            NoliHighlight.highlights[model] = nil
-            
-            if NoliHighlight.labels[model] then
-                NoliHighlight.labels[model]:Destroy()
-                NoliHighlight.labels[model] = nil
-            end
-        end
-    end
-end
-
-Visual:AddToggle("FakeNoliESP", {
-    Text = "假NoliESP",
-    Default = false,
-    Callback = function(enabled)
-        NoliHighlight.Enabled = enabled
-        if enabled then
-            if not NoliHighlight.connection then
-                NoliHighlight.connection = game:GetService("RunService").RenderStepped:Connect(updateHighlights)
-            end
-        else
-            if NoliHighlight.connection then
-                NoliHighlight.connection:Disconnect()
-                NoliHighlight.connection = nil
-            end
-            cleanupAll()
-        end
-    end
-})
-
-Visual:AddSlider("NoliFillTransparency", {
-    Text = "填充透明度",
-    Min = 0,
-    Max = 1,
-    Default = 0.5,
-    Rounding = 1,
-    Compact = false,
-    Callback = function(value)
-        NoliHighlight.FillTransparency = value
-    end
-})
-
-Visual:AddSlider("NoliOutlineTransparency", {
-    Text = "边缘透明度",
-    Min = 0,
-    Max = 1,
-    Default = 0,
-    Rounding = 1,
-    Compact = false,
-    Callback = function(value)
-        NoliHighlight.OutlineTransparency = value
-    end
-})
-
-local Visual = Tabs.Esp:AddLeftGroupbox("角色名称ESP")
+local Visual = Tabs.Esp:AddLeftGroupbox("角色名称ESP","proportions")
 
 local NameTagSettings = {
     ShowSurvivorNames = true,
@@ -3577,7 +3436,7 @@ Visual:AddToggle("ShowDistance", {
     end
 })
 
-local Visual = Tabs.Esp:AddLeftGroupbox("血量条ESP")
+local Visual = Tabs.Esp:AddLeftGroupbox("血量条ESP","heart-pulse")
 
 -- 血量条设置
 local HealthBarSettings = {
@@ -3920,7 +3779,7 @@ Visual:AddSlider("BarOffsetY", {
     end
 })
 
-Visual = Tabs.Esp:AddLeftGroupbox("血量ESP[备用]")
+Visual = Tabs.Esp:AddLeftGroupbox("血量ESP[备用]","heart-pulse")
 
 local camera = workspace.CurrentCamera
 local localPlayer = game:GetService("Players").LocalPlayer
@@ -4095,7 +3954,7 @@ Visual:AddToggle("KillerHealth", {
     Title = "杀手血量(文字)颜色",
 })
 
-local Visual   = Tabs.Esp:AddLeftGroupbox('发动机ESP[可能有卡顿]')
+local Visual   = Tabs.Esp:AddLeftGroupbox('发动机ESP[可能有卡顿]','printer')
 -- 真发动机ESP
 Visual:AddToggle("RealGeneratorESP", {
     Text = "ESP真发动机",
@@ -4800,7 +4659,7 @@ Visual:AddToggle("NoliWarningESP", {
     Title = "Noli传送发动机边缘颜色",
 })
 
-local Visual = Tabs.Esp:AddRightGroupbox("2D方框")
+local Visual = Tabs.Esp:AddRightGroupbox("2D方框","vector-square")
 
 Visual:AddToggle("2dEspSurvivorbox", {
     Text = "ESP幸存者方框",
@@ -4950,7 +4809,7 @@ Visual:AddToggle("2dEspKillerbox", {
     end
 })
 
-local Visual = Tabs.Esp:AddRightGroupbox("3D方框ESP")
+local Visual = Tabs.Esp:AddRightGroupbox("3D方框ESP","vector-square")
 
 -- 3D方框ESP设置
 local Box3DSettings = {
@@ -5507,7 +5366,7 @@ Visual:AddSlider("FootOffset", {
     end
 })
 
-local Visual = Tabs.Esp:AddLeftGroupbox("物品ESP")
+local Visual = Tabs.Esp:AddLeftGroupbox("物品ESP","shopping-basket")
 
 local LibESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImamGV/Script/main/ESP"))()
 
@@ -5956,7 +5815,7 @@ end
 end
 })
 
-local Warning = Tabs.NotificationListen:AddLeftGroupbox("杀手靠近提示")
+local Warning = Tabs.NotificationListen:AddLeftGroupbox("杀手靠近提示","bell")
 
 -- 杀手靠近提示设置
 local KillerWarningSettings = {
@@ -6105,7 +5964,7 @@ Warning:AddDropdown("WarningColor", {
     end
 })
 
-local Visual = Tabs.NotificationListen:AddRightGroupbox("Noli监听")
+local Visual = Tabs.NotificationListen:AddRightGroupbox("Noli监听","drone")
 
 Visual:AddToggle("NoliTeleportAlertNotify", {
     Text = "Noli传送提示",
@@ -6391,7 +6250,7 @@ Visual:AddToggle("NoliMotorSelectNotify", {
     end
 })
 
-local Visual = Tabs.NotificationListen:AddRightGroupbox('其他监听')
+local Visual = Tabs.NotificationListen:AddRightGroupbox('其他监听',"bell-ring")
 
 Visual:AddToggle("007n7Notify",{
         Text = "007n7分身生成提示",

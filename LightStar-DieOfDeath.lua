@@ -715,7 +715,7 @@ FunGroup:AddSlider("FrontFlipJumpDistance", {
     end
 })
 
-local AutoBlock = Tabs.Main:AddLeftGroupbox("自动格挡")
+local AutoBlock = Tabs.Main:AddLeftGroupbox("自动格挡","shield")
 
 --// 服务
 local Players = game:GetService("Players")
@@ -866,7 +866,7 @@ AutoBlock:AddSlider("AutoBlockDistance", {
 })
 
 local MainTabbox = Tabs.Main:AddRightTabbox()
-local Camera = MainTabbox:AddTab("相机")
+local Camera = MainTabbox:AddTab("相机","camera")
 
 Camera:AddToggle('FreeZoom', {
     Text = "自由缩放",
@@ -908,6 +908,75 @@ Camera:AddToggle("EnableFieldOfView",{
             end
         end)
     end
+})
+
+local Lighting = MainTabbox:AddTab("亮度","sun")
+
+Lighting:AddSlider("BrightnessValue",{
+    Text = "亮度数值",
+    Min = 0,
+    Default = 0,
+    Max = 3,
+    Rounding = 1,
+    Compact = true,
+    Callback = function(v)
+        _env.Brightness = v
+    end
+})
+
+Lighting:AddToggle("NoGlobalShadows",{
+    Text = "无阴影",
+    Default = false,
+    Callback = function(v)
+        _env.GlobalShadows = v
+    end
+})
+
+Lighting:AddToggle("NoFog",{
+    Text = "除雾",
+    Default = false,
+    Callback = function(v)
+        _env.NoFog = v
+    end
+})
+
+Lighting:AddDivider()
+
+Lighting:AddToggle("启用功能",{
+    Text = "启用",
+    Default = false,
+    Callback = function(v)
+        _env.Fullbright = v
+        game:GetService("RunService").RenderStepped:Connect(function()
+            if not game.Lighting:GetAttribute("FogStart") then 
+                game.Lighting:SetAttribute("FogStart", game.Lighting.FogStart) 
+            end
+            if not game.Lighting:GetAttribute("FogEnd") then 
+                game.Lighting:SetAttribute("FogEnd", game.Lighting.FogEnd) 
+            end
+            game.Lighting.FogStart = _env.NoFog and 0 or game.Lighting:GetAttribute("FogStart")
+            game.Lighting.FogEnd = _env.NoFog and math.huge or game.Lighting:GetAttribute("FogEnd")
+            
+            local fog = game.Lighting:FindFirstChildOfClass("Atmosphere")
+            if fog then
+                if not fog:GetAttribute("Density") then 
+                    fog:SetAttribute("Density", fog.Density) 
+                end
+                fog.Density = _env.NoFog and 0 or fog:GetAttribute("Density")
+            end
+            
+            if _env.Fullbright then
+                game.Lighting.OutdoorAmbient = Color3.new(1,1,1)
+                game.Lighting.Brightness = _env.Brightness or 0
+                game.Lighting.GlobalShadows = not _env.GlobalShadows
+            else
+                game.Lighting.OutdoorAmbient = Color3.fromRGB(55,55,55)
+                game.Lighting.Brightness = 0
+                game.Lighting.GlobalShadows = true
+            end
+        end)
+    end
+    
 })
 
 local Skill = Tabs.Main:AddRightGroupbox("能力","biohazard")
@@ -1130,7 +1199,7 @@ Skill:AddSlider(skillName.."SkillSize", {
 })
 end
 
-local Warning = Tabs.Main:AddRightGroupbox("杀手靠近提示")
+local Warning = Tabs.Main:AddRightGroupbox("杀手靠近提示","bell-ring")
 
 -- 杀手靠近提示设置
 local KillerWarningSettings = {
@@ -1279,76 +1348,7 @@ Warning:AddDropdown("WarningColor", {
     end
 })
 
-local Lighting = MainTabbox:AddTab("亮度")
-
-Lighting:AddSlider("BrightnessValue",{
-    Text = "亮度数值",
-    Min = 0,
-    Default = 0,
-    Max = 3,
-    Rounding = 1,
-    Compact = true,
-    Callback = function(v)
-        _env.Brightness = v
-    end
-})
-
-Lighting:AddToggle("NoGlobalShadows",{
-    Text = "无阴影",
-    Default = false,
-    Callback = function(v)
-        _env.GlobalShadows = v
-    end
-})
-
-Lighting:AddToggle("NoFog",{
-    Text = "除雾",
-    Default = false,
-    Callback = function(v)
-        _env.NoFog = v
-    end
-})
-
-Lighting:AddDivider()
-
-Lighting:AddToggle("启用功能",{
-    Text = "启用",
-    Default = false,
-    Callback = function(v)
-        _env.Fullbright = v
-        game:GetService("RunService").RenderStepped:Connect(function()
-            if not game.Lighting:GetAttribute("FogStart") then 
-                game.Lighting:SetAttribute("FogStart", game.Lighting.FogStart) 
-            end
-            if not game.Lighting:GetAttribute("FogEnd") then 
-                game.Lighting:SetAttribute("FogEnd", game.Lighting.FogEnd) 
-            end
-            game.Lighting.FogStart = _env.NoFog and 0 or game.Lighting:GetAttribute("FogStart")
-            game.Lighting.FogEnd = _env.NoFog and math.huge or game.Lighting:GetAttribute("FogEnd")
-            
-            local fog = game.Lighting:FindFirstChildOfClass("Atmosphere")
-            if fog then
-                if not fog:GetAttribute("Density") then 
-                    fog:SetAttribute("Density", fog.Density) 
-                end
-                fog.Density = _env.NoFog and 0 or fog:GetAttribute("Density")
-            end
-            
-            if _env.Fullbright then
-                game.Lighting.OutdoorAmbient = Color3.new(1,1,1)
-                game.Lighting.Brightness = _env.Brightness or 0
-                game.Lighting.GlobalShadows = not _env.GlobalShadows
-            else
-                game.Lighting.OutdoorAmbient = Color3.fromRGB(55,55,55)
-                game.Lighting.Brightness = 0
-                game.Lighting.GlobalShadows = true
-            end
-        end)
-    end
-    
-})
-
-local Visual = Tabs.Esp:AddRightGroupbox("高亮ESP")
+local Visual = Tabs.Esp:AddRightGroupbox("高亮ESP","ratio")
 
 -- 高亮ESP设置
 local HighlightSettings = {
@@ -1565,7 +1565,7 @@ Visual:AddSlider("OutlineTransparency", {
     end
 })
 
-local Visual = Tabs.Esp:AddLeftGroupbox("角色名称ESP")
+local Visual = Tabs.Esp:AddLeftGroupbox("角色名称ESP","proportions")
 
 local NameTagSettings = {
     ShowSurvivorNames = true,
@@ -1814,7 +1814,7 @@ Visual:AddToggle("ShowDistance", {
     end
 })
 
-local Visual = Tabs.Esp:AddLeftGroupbox("血量条ESP")
+local Visual = Tabs.Esp:AddLeftGroupbox("血量条ESP","heart-pulse")
 
 -- 血量条设置
 local HealthBarSettings = {
@@ -2157,7 +2157,7 @@ Visual:AddSlider("BarOffsetY", {
     end
 })
 
-Visual = Tabs.Esp:AddLeftGroupbox("血量ESP[备用]")
+Visual = Tabs.Esp:AddLeftGroupbox("血量ESP[备用]","heart-pulse")
 
 local camera = workspace.CurrentCamera
 local localPlayer = game:GetService("Players").LocalPlayer
@@ -2332,7 +2332,7 @@ Visual:AddToggle("KillerHealth", {
     Title = "杀手血量(文字)颜色",
 })
 
-local Visual = Tabs.Esp:AddRightGroupbox("2D方框")
+local Visual = Tabs.Esp:AddRightGroupbox("2D方框","vector-square")
 
 Visual:AddToggle("2dEspSurvivorbox", {
     Text = "ESP幸存者方框",
@@ -2482,7 +2482,7 @@ Visual:AddToggle("2dEspKillerbox", {
     end
 })
 
-local Visual = Tabs.Esp:AddRightGroupbox("3D方框ESP")
+local Visual = Tabs.Esp:AddRightGroupbox("3D方框ESP","vector-square")
 
 -- 3D方框ESP设置
 local Box3DSettings = {
