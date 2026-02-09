@@ -457,7 +457,7 @@ KillerSurvival:AddButton({
    end
 })
 
-local ZZ = Tabs.Main:AddLeftGroupbox('飞行[仅限自己可见]','cpu')
+local ZZ = Tabs.Main:AddLeftGroupbox('飞行[仅限自己可见]','plane')
 
 local RunService = game:GetService("RunService") --获取玩家操控位置函数
 local CFSpeed = 50
