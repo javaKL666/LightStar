@@ -386,7 +386,7 @@ world:AddDivider()
 local _LocalPlayer = game:GetService("Players").LocalPlayer
 
 world:AddToggle("AutoTeleport", {
-    Text = "自动传送[玻璃屋]",
+    Text = "自动传送",
     Default = main.AutoTele,
     Callback = function(state)
         main.AutoTele = state
