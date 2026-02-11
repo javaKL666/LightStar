@@ -398,27 +398,26 @@ world:AddToggle("AutoTeleport", {
         
         if state then
             main.teleThread = task.spawn(function()
-                -- 玻璃屋地面坐标（全部在地面，无高处）
                 local telePoints = {
-                    CFrame.new(67.51, 2.62, 49.96),
-                    CFrame.new(66.62, 2.62, 27.35),
-                    CFrame.new(62.12, 2.62, 11.00),
-                    CFrame.new(57.78, 2.62, -3.30),
-                    CFrame.new(52.71, 2.62, -17.91),
-                    CFrame.new(38.94, 2.62, -35.72),
-                    CFrame.new(25.06, 2.62, -46.44),
-                    CFrame.new(7.93, 2.62, -58.25),
-                    CFrame.new(-13.03, 2.62, -62.51),
-                    CFrame.new(-28.29, 2.62, -54.87),
-                    CFrame.new(-38.69, 2.62, -48.66),
-                    CFrame.new(-56.19, 2.62, -32.02),
-                    CFrame.new(-64.64, 2.62, -20.58),
-                    CFrame.new(-91.23, 2.62, -12.72),
-                    CFrame.new(-116.48, 2.62, -9.31),
-                    CFrame.new(-139.50, 2.62, 23.60),
-                    CFrame.new(-139.43, 2.62, 55.48),
-                    CFrame.new(-137.98, 2.62, 78.55),
-                    CFrame.new(-136.70, 2.62, 95.68)
+                    CFrame.new(67.5105209350586, 2.617709159851074, 49.95643615722656),
+                    CFrame.new(66.61660766601562, 2.617709159851074, 27.347152709960938),
+                    CFrame.new(62.12251281738281, 2.617709159851074, 11.004171371459961),
+                    CFrame.new(57.77750778198242, 2.617709159851074, -3.3018038272857666),
+                    CFrame.new(52.71255874633789, 2.617709159851074, -17.906509399414062),
+                    CFrame.new(38.93976593017578, 2.617709159851074, -35.72473907470703),
+                    CFrame.new(25.061079025268555, 2.617709159851074, -46.44431686401367),
+                    CFrame.new(7.925309658050537, 2.617709159851074, -58.25339889526367),
+                    CFrame.new(-13.032307624816895, 2.617709159851074, -62.51304626464844),
+                    CFrame.new(-28.29254150390625, 2.617709159851074, -54.87309265136719),
+                    CFrame.new(-56.19231414794922, 2.617709159851074, -32.02164840698242),
+                    CFrame.new(-64.64066314697266, 2.617709159851074, -20.583925247192383),
+                    CFrame.new(-91.2260513305664, 2.617709159851074, -12.719565391540527),
+                    CFrame.new(-116.47618103027344, 2.6177096366882324, -9.312110900878906),
+                    CFrame.new(-139.49990844726562, 2.6177096366882324, 23.60348892211914),
+                    CFrame.new(-139.42808532714844, 2.6177096366882324, 55.475135803222656),
+                    CFrame.new(-137.9814453125, 2.6177096366882324, 78.55432891845703),
+                    CFrame.new(-136.70278930664062, 2.6177096366882324, 95.68263244628906),
+                    CFrame.new(-38.68806838989258, 2.617709159851074, -48.66199493408203)
                 }
                 
                 local currentIndex = 1
@@ -465,8 +464,8 @@ end
 world:AddDivider()
 
 world:AddToggle("AFKAntiKick", {
-    Text = "AFK🛡️[反挂机踢出]",
-    Default = true,
+    Text = "反AFK🛡️[反挂机踢出]",
+    Default = false,
     Callback = function(state)
         if state then
             _LocalPlayer.Idled:Connect(function()
@@ -482,7 +481,7 @@ local _LocalPlayer = game:GetService("Players").LocalPlayer
 local _TweenService = game:GetService("TweenService")
 
 world:AddToggle("CollectCube", {
-    Text = "收集方块",
+    Text = "吸附方块",
     Default = false,
     Callback = function(state)
         _G.collectCubes = state
@@ -621,7 +620,7 @@ ZZ:AddSlider("CFlySpeed", {
         CFSpeed = Value
     end
 })
-local AutoSell = Tabs.Main:AddRightGroupbox('自动卖','user')
+local AutoSell = Tabs.Main:AddRightGroupbox('自动卖','wand')
 
 AutoSell:AddToggle("AutoSell", {
        Text = "自动卖",
