@@ -181,18 +181,6 @@ information:AddLabel("支持是我们的最大的贡献😜")
 information:AddDivider()
 
 information:AddLabel("执行器 : " ..identifyexecutor())
---[[
-
-local information = Tabs.new:AddRightGroupbox('信息','info')
-
-information:AddLabel("Hello亲爱的使用LightStar者")
-information:AddLabel("这个服务器脚本停更")
-information:AddLabel("我不是跑路了")
-information:AddLabel("我的账号已封禁")
-information:AddLabel("我正在制作其他新的服务器脚本")
-information:AddLabel("谢谢你的观看！！！")
-
---]]
 
 local Contributor = Tabs.new:AddRightGroupbox('鸣谢&贡献者','handshake')
 
@@ -463,19 +451,38 @@ end
 
 world:AddDivider()
 
+-- 存储反AFK的连接对象，用于关闭时断开
+local afkConnection = nil
+
 world:AddToggle("AFKAntiKick", {
     Text = "反AFK🛡️[反挂机踢出]",
     Default = false,
     Callback = function(state)
+        -- 开启功能
         if state then
-            _LocalPlayer.Idled:Connect(function()
-                game:GetService('VirtualUser'):Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+            -- 防止重复绑定事件
+            if afkConnection then return end
+
+            -- 当玩家挂机（ idle ）时，自动模拟点击，避免被系统踢出
+            afkConnection = _LocalPlayer.Idled:Connect(function()
+                -- 模拟鼠标右键按下
+                game:GetService("VirtualUser"):Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
                 task.wait(0.1)
-                game:GetService('VirtualUser'):Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+                -- 模拟鼠标右键松开
+                game:GetService("VirtualUser"):Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
             end)
+
+        -- 关闭功能
+        else
+            -- 如果有绑定的事件，就断开连接，停止反AFK
+            if afkConnection then
+                afkConnection:Disconnect()
+                afkConnection = nil
+            end
         end
-    end,
+    end
 })
+
 
 local _LocalPlayer = game:GetService("Players").LocalPlayer
 local _TweenService = game:GetService("TweenService")
@@ -803,8 +810,10 @@ end
 
 local player = Tabs.Main:AddRightGroupbox('玩家','user')
 
+-- 普通移动速度变量
 local Speedname = 1
 
+-- 普通移动速度滑块
 player:AddSlider("WalkSpeedSlider", {
     Text = "速度滑块",
     Default = 1,
@@ -813,10 +822,12 @@ player:AddSlider("WalkSpeedSlider", {
     Rounding = 1,
     Compact = false,
     Callback = function(Value)
+        -- 滑块值改变时，更新速度变量
         Speedname = Value
     end
 })
 
+-- 普通移动速度开关
 player:AddToggle("EnableWalkSpeed", {
     Text = "启用速度",
     Default = false,
@@ -825,6 +836,7 @@ player:AddToggle("EnableWalkSpeed", {
         
         if Value then
             spawn(function()
+                -- 开启时持续设置人物移动速度
                 while _G.WalkSpeed do
                     task.wait()
                     pcall(function()
@@ -832,6 +844,7 @@ player:AddToggle("EnableWalkSpeed", {
                         if not plr or not plr.Character then return end
                         local hum = plr.Character:FindFirstChildWhichIsA("Humanoid")
                         if hum then
+                            -- 基础速度16 × 滑块倍数
                             hum.WalkSpeed = 16 * Speedname
                         end
                     end)
@@ -841,7 +854,10 @@ player:AddToggle("EnableWalkSpeed", {
     end
 })
 
---[[
+-- 瞬移速度变量（注意：和上面共用 Speedname，会互相覆盖）
+local Speedname = 1
+
+-- 瞬移速度滑块
 player:AddSlider("TeleportWalkSpeedSlider", {
     Text = "瞬速滑块",
     Default = 1,
@@ -850,55 +866,125 @@ player:AddSlider("TeleportWalkSpeedSlider", {
     Rounding = 1,
     Compact = false,
     Callback = function(Value)
+        -- 修改瞬移速度变量
         Speedname = Value
+    end
+})
 
-        function Speed()
-            spawn(function()
-                _G.TeleportWalkSpeed = true
+local speedLoopRunning = false
 
-                while _G.TeleportWalkSpeed do
-                    wait()
-                    pcall(function()
-                        while true do
-                            task.wait()
+-- 瞬移移动函数
+local function Speed()
+    -- 防止重复开启循环
+    if speedLoopRunning then return end
+    speedLoopRunning = true
 
-                            local _Character2 = game.Players.LocalPlayer.Character
-                            local _TranslateBy = _Character2.TranslateBy
-                            local _Character3 = game.Players.LocalPlayer.Character
+    spawn(function()
+        -- 开启状态下持续执行瞬移位移
+        while _G.TeleportWalkSpeed do
+            task.wait()
+            pcall(function()
+                local plr = game:GetService("Players").LocalPlayer
+                local char = plr.Character
+                if not char then return end
 
-                            if _Character3 then
-                                _Character3 = game.Players.LocalPlayer.Character:FindFirstChildWhichIsA('Humanoid').MoveDirection * tonumber(Speedname) * 0.2
-                            end
+                local hum = char:FindFirstChildWhichIsA("Humanoid")
+                if not hum then return end
 
-                            _TranslateBy(_Character2, _Character3)
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if not root then return end
 
-                            if _G.TeleportWalkSpeed == false then
-                                wait(1)
-                                return
-                            end
-                        end
-                    end)
+                local dir = hum.MoveDirection
+                -- 有人物移动输入时才位移
+                if dir.Magnitude > 0 then
+                    root.CFrame = root.CFrame + dir * Speedname * 0.2
                 end
             end)
         end
+        speedLoopRunning = false
+    end)
+end
+
+-- 获取角色默认跳跃力，若角色未加载则使用 50 作为默认值
+local defaultJumpPower = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character.Humanoid.JumpPower or 50
+
+-- 初始化跳跃高度变量，使用默认跳跃力，避免一开始跳不高
+local JumpPower = defaultJumpPower
+
+-- 跳跃高度调节滑块
+player:AddSlider("JumpHeightSlider", {
+    Text = "跳跃高度滑块",
+    Default = defaultJumpPower,
+    Min = defaultJumpPower,
+    Max = 500,
+    Rounding = 1,
+    Compact = false,
+    Callback = function(Value)
+        -- 滑块数值改变时，同步更新跳跃高度变量
+        JumpPower = Value
     end
 })
 
-player:AddToggle("EnableTeleportWalkSpeed", {
-    Text = "启用瞬速",
+-- 跳跃循环运行标记，防止重复开循环
+local JumpLoopRunning = false
+
+-- 跳跃高度主功能函数
+local function Jump()
+    -- 如果循环已经在运行，直接退出，避免重复启动
+    if JumpLoopRunning then return end
+    JumpLoopRunning = true
+
+    -- 新开一个线程运行循环，不阻塞主线程
+    spawn(function()
+        -- 当 _G.JumpHeight 为 true 时持续运行
+        while _G.JumpHeight do
+            task.wait()
+            -- 包裹 pcall 防止角色未加载报错
+            pcall(function()
+                local plr = game:GetService("Players").LocalPlayer
+                local char = plr.Character
+                -- 角色不存在则跳过
+                if not char then return end
+
+                local hum = char:FindFirstChildWhichIsA("Humanoid")
+                -- 人形对象不存在则跳过
+                if not hum then return end
+
+                -- 实时设置跳跃力为滑块的值
+                hum.JumpPower = JumpPower
+            end)
+        end
+
+        -- 循环结束（关闭功能）时，恢复默认跳跃力
+        pcall(function()
+            local plr = game:GetService("Players").LocalPlayer
+            local char = plr.Character
+            if char then
+                local hum = char:FindFirstChildWhichIsA("Humanoid")
+                if hum then
+                    hum.JumpPower = defaultJumpPower
+                end
+            end
+        end)
+
+        -- 循环结束，重置运行标记
+        JumpLoopRunning = false
+    end)
+end
+
+-- 跳跃高度功能开关
+player:AddToggle("EnableJumpHeight", {
+    Text = "启用跳跃高度",
     Default = false,
     Callback = function(Value)
-        _G.TeleportWalkSpeed = Value
-        
+        -- 设置全局开关状态
+        _G.JumpHeight = Value
+        -- 开启时启动跳跃功能
         if Value then
-            Speed()
-            _G.TeleportWalkSpeed = true
-        else
-            _G.TeleportWalkSpeed = false
+            Jump()
         end
     end
 })
---]]
 
 local MenuGroup = Tabs.Settings:AddLeftGroupbox("调试","wrench")
 
