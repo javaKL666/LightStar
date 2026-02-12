@@ -4,7 +4,8 @@ if game.Players.LocalPlayer.Name == "mmnnn185" or game.Players.LocalPlayer.Name 
 end
 
 -- =====本地卡密验证=====
--- 正确卡密 (你自己设置)
+local Key = Key or "错误卡密" -- 如果玩家没在外部写Key 将判为错误卡密
+-- 正确卡密
 local correctKey = "GoodSolo1"
 
 -- 去空格
