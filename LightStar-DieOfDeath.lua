@@ -66,7 +66,7 @@ Library.ShowToggleFrameInKeybinds = true
 local Window = Library:CreateWindow({
 	Title = "LightStar",
 	Footer = "LightStar团队脚本-discord.gg/BW55cR7Z [来源Nolsaken]",
-	Icon = 106397684977541,
+	Icon = "rbxassetid://93487642627310",
 })
 --biohazard
 local Tabs = {

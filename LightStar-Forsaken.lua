@@ -84,7 +84,7 @@ Library.ShowToggleFrameInKeybinds = true
 local Window = Library:CreateWindow({
 	Title = "LightStar",
 	Footer = "LightStar团队脚本-discord.gg/BW55cR7Z [来源Nolsaken]",
-	Icon = 106397684977541,
+	Icon = "rbxassetid://93487642627310",
 })
 --biohazard
 local Tabs = {
@@ -10112,10 +10112,10 @@ SM:AddToggle('KillAll', {
     Text = "自动攻击所有玩家",
     Callback = function(s)
         if s and playingState == "Spectating" then
-            return Notify("LightStar-提示", "必须在一轮 窥视时无法使用此功能", 7)
+            Library:Notify("LightStar-提示", "必须在一轮 窥视时无法使用此功能", 7)
         end
         if s and isSurvivor then
-            return Notify("LightStar-提示", "要使用此功能 您必须是杀手", 7)
+            Library:Notify("LightStar-提示", "要使用此功能 您必须是杀手", 7)
         end
         if not (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")) then Toggles.KillAll:SetValue(false) return end
         for _, v in pairs(workspace.Players.Survivors:GetChildren()) do
