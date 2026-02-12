@@ -203,8 +203,8 @@ local main = {
     AutoBoxInterval = 0.1,
     AutoTeleport = false,
     AutoTeleportInterval = 2,
-    RemoveMap = false,
-    teleThread = nil
+    teleportThread = nil,
+    RemoveMap = false
 }
 
 world:AddToggle("AutoGrab", {
@@ -253,7 +253,7 @@ world:AddToggle("AutoEat", {
 if Value then
 startLoop("AutoEat", function()
 game:GetService("Players").LocalPlayer.Character.Events.Eat:FireServer()
-end, tonumber(Options.AutoEatInterval.Value))
+end, tonumber(Options.AutoEatInterval.Value) or 0.1)
 else
 stopLoop("AutoEat")
 end
@@ -291,7 +291,7 @@ world:AddToggle("AutoThrow", {
 if Value then
 startLoop("AutoThrow", function()
 game:GetService("Players").LocalPlayer.Character.Events.Throw:FireServer()
-end, tonumber(Options.AutoThrowInterval.Value))
+end, tonumber(Options.AutoThrowInterval.Value) or 0.1)
 else
 stopLoop("AutoThrow")
 end
@@ -342,7 +342,7 @@ world:AddToggle("AutoBox", {
                         end
                     end
                 end
-            end, tonumber(Options.AutoBoxInterval.Value))
+            end, tonumber(Options.AutoBoxInterval.Value) or 0.1)
         else
             stopLoop("AutoBox")
         end
@@ -375,18 +375,18 @@ local _LocalPlayer = game:GetService("Players").LocalPlayer
 
 world:AddToggle("AutoTeleport", {
     Text = "自动传送",
-    Default = main.AutoTele,
+    Default = main.AutoTeleport,
     Callback = function(state)
-        main.AutoTele = state
+        main.AutoTeleport = state
         
-        if main.teleThread then
-            task.cancel(main.teleThread)
-            main.teleThread = nil
+        if main.teleportThread then
+            task.cancel(main.teleportThread)
+            main.teleportThread = nil
         end
         
         if state then
-            main.teleThread = task.spawn(function()
-                local telePoints = {
+            main.teleportThread = task.spawn(function()
+                local teleportPoints = {
                     CFrame.new(67.5105209350586, 2.617709159851074, 49.95643615722656),
                     CFrame.new(66.61660766601562, 2.617709159851074, 27.347152709960938),
                     CFrame.new(62.12251281738281, 2.617709159851074, 11.004171371459961),
@@ -410,14 +410,14 @@ world:AddToggle("AutoTeleport", {
                 
                 local currentIndex = 1
                 
-                while main.AutoTele do
+                while main.AutoTeleport do
                     local character = _LocalPlayer.Character or _LocalPlayer.CharacterAdded:Wait()
                     local hrp = character:FindFirstChild("HumanoidRootPart")
                     
-                    if hrp and main.AutoTele then
-                        hrp.CFrame = telePoints[currentIndex]
+                    if hrp and main.AutoTeleport then
+                        hrp.CFrame = teleportPoints[currentIndex]
                         currentIndex = currentIndex + 1
-                        if currentIndex > #telePoints then
+                        if currentIndex > #teleportPoints then
                             currentIndex = 1
                         end
                     end
@@ -904,6 +904,19 @@ local function Speed()
         speedLoopRunning = false
     end)
 end
+
+player:AddToggle("EnableTeleportSpeed", {
+    Text = "启用瞬速",
+    Default = false,
+    Callback = function(Value)
+        -- 设置全局开关状态
+        _G.TeleportWalkSpeed = Value
+        -- 开启时启动速度功能
+        if Value then
+            Speed()
+        end
+    end
+})
 
 -- 获取角色默认跳跃力，若角色未加载则使用 50 作为默认值
 local defaultJumpPower = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character.Humanoid.JumpPower or 50
