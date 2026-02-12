@@ -3,6 +3,19 @@ if game.Players.LocalPlayer.Name == "mmnnn185" or game.Players.LocalPlayer.Name 
     game.Players.LocalPlayer:Kick("您被脚本作者禁止使用了 如果想使用 请您向脚本作者问答")
 end
 
+-- =====本地卡密验证=====
+-- 正确卡密 (你自己设置)
+local correctKey = "GoodSolo1"
+
+-- 去空格
+local cleanedCorrectKey = correctKey:gsub("%s+", "")
+local cleanedKey = Key:gsub("%s+", "")
+
+-- 验证错误 → 踢出
+if cleanedKey ~= cleanedCorrectKey then    
+    game:GetService("Players").LocalPlayer:Kick("Solo1👿Player👿")
+end
+
 -- =====Nolsaken加载动画=====
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
