@@ -21,6 +21,8 @@ else
 Library = loadstring(game:HttpGet(repo .. "DearReg.lua"))()
 end
 
+Executor = identifyexecutor() or getexecutorname() or "Unknown"
+
 local ThemeManager 
 if UIStyle == "LinoriaLib" then
 ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
@@ -363,7 +365,7 @@ KillerSurvival:AddToggle('AllowJump', {
     Callback = function(value)
         restoringJump = value
         
-      Notify("LightStar-警告", "反复跳跃会踢你 因为游戏会认为你正在飞行！", 9)
+      Library:Notify("LightStar-警告", "反复跳跃会踢你 因为游戏会认为你正在飞行！", 9)
 
         if value then
             task.spawn(function()
@@ -783,36 +785,51 @@ Lighting:AddToggle("启用功能",{
 
 local Teleport = Tabs.Main:AddRightGroupbox('传送',"clapperboard")
 
+-- 独立传送函数
+local function TeleportToKiller()
+    if playingState == "Spectating" then
+        Library:Notify("LightStar-提示", "窥视状态下无法使用此功能", 7)
+        return -- 修复：不满足条件直接退出
+    end
+
+    local killer = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") and workspace.Players.Killers:GetChildren()[1]
+    if killer then
+        pcall(function()
+            -- 修复：增加空值检查，防止报错
+            if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and killer:FindFirstChild("HumanoidRootPart") then
+                localPlayer.Character.HumanoidRootPart.CFrame = killer.HumanoidRootPart.CFrame
+            end
+        end)
+    end
+end
+
+local function TeleportToRandomSurvivor()
+    if playingState == "Spectating" then
+        Library:Notify("LightStar-提示", "窥视状态下无法使用此功能", 7)
+        return -- 修复：不满足条件直接退出
+    end
+    pcall(function()
+        if not (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")) then return end
+        local survs = workspace.Players.Survivors:GetChildren()
+        if #survs == 0 then return end
+
+        -- 修复：增加空值检查，防止报错
+        local target = survs[math.random(1, #survs)]
+        if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and target:FindFirstChild("HumanoidRootPart") then
+            localPlayer.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame
+        end
+    end)
+end
+
+-- 按钮（只调用函数）
 Teleport:AddButton({
     Text = "传送杀手",
-    Func = function ()
-        if playingState == "Spectating" then
-            return Notify("LightStar-提示", "必须在一轮 窥视时无法使用此功能", 7)
-        end
-
-        local killer = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") and workspace.Players.Killers:GetChildren()[1]
-        if killer then
-            pcall(function()
-                localPlayer.Character.HumanoidRootPart.CFrame = killer.PrimaryPart.CFrame
-            end)
-        end
-    end
+    Func = TeleportToKiller
 })
 
 Teleport:AddButton({
     Text = "传送随机幸存者",
-    Func = function()
-        if playingState == "Spectating" then
-            return Notify("LightStar-提示", "必须在一轮 窥视时无法使用此功能", 7)
-        end
-        pcall(function()
-            if not (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")) then return end
-            local survs = workspace.Players.Survivors:GetChildren()
-            if #survs == 0 then return end
-
-            localPlayer.Character.HumanoidRootPart.CFrame = survs[math.random(1, #survs)].HumanoidRootPart.CFrame
-        end)
-    end
+    Func = TeleportToRandomSurvivor
 })
 
 --[[
@@ -8334,7 +8351,6 @@ ZZ:AddButton({
     end
 })
 
---[[
 local ZZ = Tabs.Mess:AddLeftGroupbox('<b><font color=\"rgb(255, 0, 0)\">飞行[最危险]</font></b>','plane')
 
 local RunService = game:GetService("RunService") --获取玩家操控位置函数
@@ -8428,7 +8444,6 @@ ZZ:AddSlider("CFlySpeed", {
         CFSpeed = Value
     end
 })
---]]
 --[[
 local Game = Tabs.Mess:AddLeftGroupbox('对局游戏','gamepad-2')
 
@@ -8496,6 +8511,174 @@ Game:AddToggle('HiddenGamePlayerColumn', {
                 survivors.Visible = true
             end
         end
+    end
+})
+--]]
+
+--[[
+local FunGroup = Tabs.Mess:AddRightGroupbox("后空翻","rbxthumb://type=Asset&id=2714338264&w=150&h=150")
+
+local ff_connection = nil
+local ff_enabled = false
+local ff_cd = false
+local jumpHeight = 72  -- 默认高度: 6 * 12 = 72
+local jumpDistance = 35  -- 默认距离
+
+local function Flip()
+    if ff_cd then
+        return
+    end
+    ff_cd = true
+    local character = game.Players.LocalPlayer.Character
+    if not character then
+        ff_cd = false
+        return
+    end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    local Humanoid = character:FindFirstChildOfClass("Humanoid")
+    local animator = Humanoid and Humanoid:FindFirstChildOfClass("Animator")
+    if not hrp or not Humanoid then
+        ff_cd = false
+        return
+    end
+    local savedTracks = {}
+    if animator then
+        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+            savedTracks[#savedTracks + 1] = { track = track, time = track.TimePosition }
+            track:Stop(0)
+        end
+    end
+    Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+    local duration = 0.45
+    local steps = 120
+    local startCFrame = hrp.CFrame
+    local forwardVector = startCFrame.LookVector
+    local upVector = Vector3.new(0, 1, 0)
+    task.spawn(function()
+        local startTime = tick()
+        for i = 1, steps do
+            local t = i / steps
+            local height = jumpHeight * (t - t ^ 2)  -- 使用滑块调节的高度
+            local nextPos = startCFrame.Position + forwardVector * (jumpDistance * t) + upVector * height    
+            local rotation = startCFrame.Rotation * CFrame.Angles(-math.rad(i * (360 / steps)), 0, 0)
+
+            hrp.CFrame = CFrame.new(nextPos) * rotation
+            local elapsedTime = tick() - startTime
+            local expectedTime = (duration / steps) * i
+            local waitTime = expectedTime - elapsedTime
+            if waitTime > 0 then
+                task.wait(waitTime)
+            end
+        end
+
+        hrp.CFrame = CFrame.new(startCFrame.Position + forwardVector * jumpDistance) * startCFrame.Rotation
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+        Humanoid:ChangeState(Enum.HumanoidStateType.Running)
+
+        if animator then
+            for _, data in ipairs(savedTracks) do
+                local track = data.track
+                track:Play()
+                track.TimePosition = data.time
+            end
+        end
+        task.wait(0.25)
+        ff_cd = false
+    end)
+end
+
+local sausageHolder = nil
+local originalSize = nil
+local ff_button = nil
+
+local function SetFrontFlip(bool)
+    ff_enabled = bool
+    if ff_enabled == true then
+        pcall(function()
+            sausageHolder = game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.UnibarMenu["2"]
+            originalSize = sausageHolder.Size.X.Offset
+            ff_button = Instance.new("Frame", sausageHolder)
+            ff_button.Size = UDim2.new(0, 48, 0, 44)
+            ff_button.BackgroundTransparency = 1
+            ff_button.BorderSizePixel = 0
+            ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset - 48, 0, 0)
+            
+            local imageButton = Instance.new("ImageButton", ff_button)
+            imageButton.BackgroundTransparency = 1
+            imageButton.BorderSizePixel = 0
+            imageButton.Size = UDim2.new(0, 36, 0, 36)
+            imageButton.AnchorPoint = Vector2.new(0.5, 0.5)
+            imageButton.Position = UDim2.new(0.5, 0, 0.5, 0)
+            imageButton.Image = "rbxthumb://type=Asset&id=2714338264&w=150&h=150"
+            
+            ff_connection = imageButton.Activated:Connect(Flip)
+            sausageHolder.Size = UDim2.new(0, originalSize + 48, 0, sausageHolder.Size.Y.Offset)
+            task.wait()
+            ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset - 48, 0, 0)
+            
+            task.spawn(function()
+                pcall(function()
+                    repeat
+                        sausageHolder.Size = UDim2.new(0, originalSize + 48, 0, sausageHolder.Size.Y.Offset)
+                        task.wait()
+                        ff_button.Position = UDim2.new(0, sausageHolder.Size.X.Offset - 48, 0, 0)
+                    until ff_enabled == false
+                end)
+            end)
+        end)
+    elseif ff_enabled == false then
+        if ff_connection then
+            ff_connection:Disconnect()
+            ff_connection = nil
+        end
+        if ff_button then
+            ff_button:Destroy()
+            ff_button = nil
+        end
+        if sausageHolder then
+            sausageHolder.Size = UDim2.new(0, originalSize, 0, sausageHolder.Size.Y.Offset)
+        end
+    end
+end
+
+FunGroup:AddToggle("FrontFlipButton", {
+    Text = "显示按钮",
+    Default = false,
+    Callback = function(Value)
+        SetFrontFlip(Value)
+    end
+})
+
+FunGroup:AddSlider("FrontFlipJumpHeight", {
+    Text = "跳跃高度",
+    Default = 72,
+    Min = 20,
+    Max = 200,
+    Rounding = 0,
+    Compact = false,
+    Callback = function(Value)
+        jumpHeight = Value
+    end
+})
+
+FunGroup:AddSlider("FrontFlipJumpDistance", {
+    Text = "跳跃距离",
+    Default = 35,
+    Min = 10,
+    Max = 100,
+    Rounding = 0,
+    Compact = false,
+    Callback = function(Value)
+        jumpDistance = Value
     end
 })
 --]]
@@ -9361,7 +9544,384 @@ SM:AddToggle("ShowHitbox", {
     end
 })
 
+-- 【核心修复】用一个表集中管理所有配置和大数组，只占用1个局部变量名额
+local HitboxConfig = {
+    -- 阵营列表（从大量局部变量合并为表）
+    Killers = {
+        ["Slasher"] = true, ["1x1x1x1"] = true, ["c00lkidd"] = true,
+        ["Noli"] = true, ["JohnDoe"] = true, ["Guest 666"] = true,
+        ["Sixer"] = true
+    },
+    Survivors = {
+        ["Noob"] = true, ["Guest1337"] = true, ["Elliot"] = true,
+        ["Shedletsky"] = true, ["TwoTime"] = true, ["007n7"] = true,
+        ["Chance"] = true, ["Builderman"] = true, ["Taph"] = true,
+        ["Dusekkar"] = true, ["Veeronica"] = true
+    },
+    -- 攻击动画（合并为表，避免大量局部变量）
+    AttackAnimations = {
+        'rbxassetid://131430497821198',
+        'rbxassetid://83829782357897',
+        'rbxassetid://126830014841198',
+        'rbxassetid://126355327951215',
+        'rbxassetid://121086746534252',
+        'rbxassetid://105458270463374',
+        'rbxassetid://18885919947',
+        'rbxassetid://18885909645',
+        'rbxassetid://87259391926321',
+        'rbxassetid://106014898528300',
+        'rbxassetid://86545133269813',
+        'rbxassetid://89448354637442',
+        'rbxassetid://90499469533503',
+        'rbxassetid://116618003477002',
+        'rbxassetid://106086955212611',
+        'rbxassetid://107640065977686',
+        'rbxassetid://77124578197357',
+        'rbxassetid://101771617803133',
+        'rbxassetid://134958187822107',
+        'rbxassetid://111313169447787',
+        'rbxassetid://71685573690338',
+        'rbxassetid://129843313690921',
+        'rbxassetid://97623143664485',
+        'rbxassetid://136007065400978',
+        'rbxassetid://86096387000557',
+        'rbxassetid://108807732150251',
+        'rbxassetid://138040001965654',
+        'rbxassetid://73502073176819',
+        'rbxassetid://86709774283672',
+        'rbxassetid://140703210927645',
+        'rbxassetid://96173857867228',
+        'rbxassetid://121255898612475',
+        'rbxassetid://98031287364865',
+        'rbxassetid://119462383658044',
+        'rbxassetid://77448521277146',
+        'rbxassetid://103741352379819',
+        'rbxassetid://131696603025265',
+        'rbxassetid://122503338277352',
+        'rbxassetid://97648548303678',
+        'rbxassetid://94162446513587',
+        'rbxassetid://84426150435898',
+        'rbxassetid://93069721274110',
+        'rbxassetid://114620047310688',
+        'rbxassetid://97433060861952',
+        'rbxassetid://82183356141401',
+        'rbxassetid://100592913030351',
+        'rbxassetid://121293883585738',
+        'rbxassetid://70447634862911',
+        'rbxassetid://92173139187970',
+        'rbxassetid://106847695270773',
+        'rbxassetid://125403313786645',
+        'rbxassetid://81639435858902',
+        'rbxassetid://137314737492715',
+        'rbxassetid://120112897026015',
+        'rbxassetid://82113744478546',
+        'rbxassetid://118298475669935',
+        'rbxassetid://126681776859538',
+        'rbxassetid://129976080405072',
+        'rbxassetid://109667959938617',
+        'rbxassetid://74707328554358',
+        'rbxassetid://133336594357903',
+        'rbxassetid://86204001129974',
+        'rbxassetid://124243639579224',
+        'rbxassetid://70371667919898',
+        'rbxassetid://131543461321709',
+        'rbxassetid://136323728355613',
+        'rbxassetid://109230267448394',
+        'rbxassetid://139835501033932',
+        'rbxassetid://106538427162796',
+        'rbxassetid://110400453990786',
+        'rbxassetid://83685305553364',
+        'rbxassetid://126171487400618',
+        'rbxassetid://122709416391891',
+        'rbxassetid://87989533095285',
+        'rbxassetid://119326397274934',
+        'rbxassetid://140365014326125',
+        'rbxassetid://139309647473555',
+        'rbxassetid://133363345661032',
+        'rbxassetid://128414736976503',
+        'rbxassetid://121808371053483',
+        'rbxassetid://88451353906104',
+        'rbxassetid://81299297965542',
+        'rbxassetid://99829427721752',
+        'rbxassetid://126896426760253',
+        'rbxassetid://77375846492436',
+        'rbxassetid://94634594529334',
+        'rbxassetid://101031946095087'
+    },
+    -- 追踪设置
+    MaxDistance = 120,
+    FilterSurvivors = false,
+    FilterKillers = false,
+    WallCheckEnabled = false,
+    HitboxTrackingEnabled = false,
+    HeartbeatConnection = nil
+}
+
+-- 【修复】拆分大函数，把逻辑拆成独立小函数，减少单个作用域的局部变量
+local function isTargetVisible(targetCharacter, localHRP, wallCheck)
+    if not wallCheck or not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then
+        return true
+    end
+    
+    local targetHRP = targetCharacter.HumanoidRootPart
+    local origin = localHRP.Position
+    local direction = (targetHRP.Position - origin).Unit
+    local distance = (targetHRP.Position - origin).Magnitude
+    
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {game.Players.LocalPlayer.Character, targetCharacter}
+    rayParams.IgnoreWater = true
+    
+    local rayResult = workspace:Raycast(origin, direction * distance, rayParams)
+    return not rayResult or rayResult.Instance:IsDescendantOf(targetCharacter)
+end
+
+local function getCharacterRole(character, config)
+    local modelName = character.Name
+    if config.Killers[modelName] then return "Killer" end
+    if config.Survivors[modelName] then return "Survivor" end
+    return "Unknown"
+end
+
+local function findOppositeTarget(oppTable, localHRP, maxDist, wallCheck, config)
+    local nearestTarget = nil
+    local nearestDist = maxDist
+    
+    local function scanFolder(folder)
+        for _,v in pairs(folder:GetDescendants()) do
+            if not v:IsA("Model") or v == game.Players.LocalPlayer.Character then continue end
+            local hrp = v:FindFirstChild("HumanoidRootPart")
+            if not hrp or not v:FindFirstChild("Humanoid") then continue end
+            if wallCheck and not isTargetVisible(v, localHRP, wallCheck) then continue end
+            
+            -- 【全程生效过滤】这里加上过滤，对立目标也会被过滤
+            local role = getCharacterRole(v, config)
+            if config.FilterSurvivors and role == "Survivor" then continue end
+            if config.FilterKillers and role == "Killer" then continue end
+            
+            if oppTable[role] then
+                local dist = (hrp.Position - localHRP.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearestTarget = v
+                end
+            end
+        end
+    end
+    
+    scanFolder(workspace.Players)
+    local npcs = workspace.Map:FindFirstChild("NPCs", true)
+    if npcs then scanFolder(npcs) end
+    
+    return nearestTarget
+end
+
+local function startTracking(config, ui)
+    if config.HeartbeatConnection then
+        config.HeartbeatConnection:Disconnect()
+        config.HeartbeatConnection = nil
+    end
+    
+    repeat task.wait() until game:IsLoaded()
+    local player = game.Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    local rng = Random.new()
+    
+    player.CharacterAdded:Connect(function(newChar)
+        char = newChar
+        humanoid = char:WaitForChild("Humanoid")
+        hrp = char:WaitForChild("HumanoidRootPart")
+    end)
+    
+    config.HeartbeatConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not config.HitboxTrackingEnabled or not hrp then return end
+        
+        -- 检查攻击动画
+        local isAttacking = false
+        for _,track in pairs(humanoid:GetPlayingAnimationTracks()) do
+            if table.find(config.AttackAnimations, track.Animation.AnimationId) and (track.TimePosition / track.Length < 0.75) then
+                isAttacking = true
+                break
+            end
+        end
+        if not isAttacking then return end
+        
+        -- 找对立阵营目标
+        local selfRole = getCharacterRole(char, config)
+        local oppTable = selfRole == "Killer" and config.Survivors or selfRole == "Survivor" and config.Killers or nil
+        local target = oppTable and findOppositeTarget(oppTable, hrp, config.MaxDistance, config.WallCheckEnabled, config)
+        
+        if not target then
+            -- 备选：找所有符合过滤条件的目标
+            local nearest = nil
+            local nearestDist = config.MaxDistance
+            local function scanAll(folder)
+                for _,v in pairs(folder:GetDescendants()) do
+                    if not v:IsA("Model") or v == char then continue end
+                    local targetHRP = v:FindFirstChild("HumanoidRootPart")
+                    if not targetHRP or not v:FindFirstChild("Humanoid") then continue end
+                    if config.WallCheckEnabled and not isTargetVisible(v, hrp, config.WallCheckEnabled) then continue end
+                    
+                    local role = getCharacterRole(v, config)
+                    if (config.FilterSurvivors and role == "Survivor") or (config.FilterKillers and role == "Killer") then continue end
+                    if (selfRole == "Killer" and role == "Killer") or (selfRole == "Survivor" and role == "Survivor") then continue end
+                    
+                    local dist = (targetHRP.Position - hrp.Position).Magnitude
+                    if dist < nearestDist then
+                        nearestDist = dist
+                        nearest = v
+                    end
+                end
+            end
+            scanAll(workspace.Players)
+            local npcs = workspace.Map:FindFirstChild("NPCs", true)
+            if npcs then scanAll(npcs) end
+            target = nearest
+        end
+        
+        if not target then return end
+        
+        -- 执行追踪
+        local oldVel = hrp.Velocity
+        local targetHRP = target.HumanoidRootPart
+        local ping = player:GetNetworkPing()
+        local neededVel = (
+            targetHRP.Position + Vector3.new(rng:NextNumber(-1.5,1.5), 0, rng:NextNumber(-1.5,1.5))
+            + (targetHRP.Velocity * (ping * 1.25))
+            - hrp.Position
+        ) / (ping * 2)
+        
+        hrp.Velocity = neededVel
+        game:GetService("RunService").RenderStepped:Wait()
+        hrp.Velocity = oldVel
+    end)
+end
+
+local function stopTracking(config)
+    if config.HeartbeatConnection then
+        config.HeartbeatConnection:Disconnect()
+        config.HeartbeatConnection = nil
+    end
+    config.HitboxTrackingEnabled = false
+end
+
+-- 【UI部分】只负责设置配置，不包含复杂逻辑
 local SM = Tabs.FightingKilling:AddLeftGroupbox('自调Hitbox追踪')
+
+SM:AddSlider("DistanceSlider", {
+    Text = "追踪范围",
+    Default = 120,
+    Min = 1,
+    Max = 300,
+    Rounding = 0,
+    Callback = function(value) 
+    HitboxConfig.MaxDistance = value 
+  end
+})
+
+SM:AddToggle("FilterSurvivorsToggle", {
+    Text = "过滤[不追踪]幸存者",
+    Default = false,
+    Callback = function(state) 
+    HitboxConfig.FilterSurvivors = state 
+  end
+})
+
+SM:AddToggle("FilterKillersToggle", {
+    Text = "过滤[不追踪]杀手",
+    Default = false,
+    Callback = function(state) 
+    HitboxConfig.FilterKillers = state 
+  end
+})
+
+SM:AddToggle("WallCheck", {
+    Text = "墙壁检测",
+    Default = false,
+    Callback = function(state) 
+HitboxConfig.WallCheckEnabled = state 
+  end
+})
+
+SM:AddToggle("HitboxTracking", {
+    Text = "Hitbox追踪",
+    Default = false,
+    Callback = function(state)
+        HitboxConfig.HitboxTrackingEnabled = state
+        if state then
+            startTracking(HitboxConfig, SM)
+        else
+            stopTracking(HitboxConfig)
+        end
+    end
+})
+
+--[[
+local SM = Tabs.FightingKilling:AddLeftGroupbox('自调Hitbox追踪')
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    RootPart = Character:WaitForChild("HumanoidRootPart")
+end)
+
+local Settings = {
+    WallCheck = false,       -- 穿墙检测（保留）
+    FilterKillers = false,   -- 过滤杀手（保留）
+    FilterSurvivors = false  -- 过滤幸存者（保留）
+}
+
+-- 目标合法性验证：穿墙检测 + 阵营过滤
+local function isValidTarget(model, humanoidRootPart)
+    if not model or not humanoidRootPart then return false end
+    if model == Character then return false end
+
+    -- 穿墙检测
+    if Settings.WallCheck then
+        local rayParams = RaycastParams.new()
+        rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+        rayParams.FilterDescendantsInstances = {Character, model}
+        rayParams.IgnoreWater = true
+
+        local direction = humanoidRootPart.Position - RootPart.Position
+        local rayResult = workspace:Raycast(
+            RootPart.Position,
+            direction.Unit * direction.Magnitude,
+            rayParams
+        )
+
+        if rayResult and not rayResult.Instance:IsDescendantOf(model) then
+            return false
+        end
+    end
+
+    -- 过滤杀手
+    if Settings.FilterKillers then
+        local killersFolder = workspace.Players:FindFirstChild("Killers")
+        if killersFolder and model:IsDescendantOf(killersFolder) then
+            return false
+        end
+    end
+
+    -- 过滤幸存者
+    if Settings.FilterSurvivors then
+        local survivorsFolder = workspace.Players:FindFirstChild("Survivors")
+        if survivorsFolder and model:IsDescendantOf(survivorsFolder) then
+            return false
+        end
+    end
+
+    return true
+end
 
 local HitboxTrackingEnabled = false
 local HeartbeatConnection = nil
@@ -9709,6 +10269,7 @@ SM:AddToggle("HitboxTracking", {
         end);
     end,
 })
+--]]
 
 --[[
 local SM = Tabs.FightingKilling:AddLeftGroupbox('自调碰撞箱追踪')

@@ -21,6 +21,8 @@ else
 Library = loadstring(game:HttpGet(repo .. "DearReg.lua"))()
 end
 
+Executor = identifyexecutor() or getexecutorname() or "Unknown"
+
 local ThemeManager 
 if UIStyle == "LinoriaLib" then
 ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
