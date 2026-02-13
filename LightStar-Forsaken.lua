@@ -77,6 +77,7 @@ local actor = Network:WaitForChild("RemoteEvent")
 
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
+local gameMap = workspace.Map
 
 Library.ForceCheckbox = false -- 默认点击开关盒子 (false / true)
 Library.ShowToggleFrameInKeybinds = true 
@@ -84,7 +85,7 @@ Library.ShowToggleFrameInKeybinds = true
 local Window = Library:CreateWindow({
 	Title = "LightStar",
 	Footer = "LightStar团队脚本-discord.gg/BW55cR7Z [来源Nolsaken]",
-	Icon = "rbxassetid://93487642627310",
+	Icon = 95816097006870,
 })
 --biohazard
 local Tabs = {
@@ -93,6 +94,7 @@ local Tabs = {
     Aimbot = Window:AddTab('自瞄','cross','让你自瞄的更准!!!'),
     Esp = Window:AddTab('ESP','scan-eye','让你能够透视他们!!!'),
     NotificationListen = Window:AddTab('通知提示','mails','让你帮助你监听杀手!!!'),
+    Mess = Window:AddTab('杂乱','biohazard','很多功能杂乱在这里'),
     FightingKilling = Window:AddTab('战斗&杀戮','swords','让变得打击更轻松!!!'),
     Block = Window:AddTab('格挡','target','让你自动抵御杀手的攻击!!!'),
     BanEffect = Window:AddTab('反效果','cpu','让你无法受到效果!!!'),
@@ -469,157 +471,78 @@ local players = game:GetService('Players')
 
 if not getgenv().Config then
     getgenv().Config = {
-    Headless = false,
-    
-    FakeDisplayName = "Liquidbounce",
-    FakeName = "Liquidbounce",
-    FakeId = 2,
-}
+        Headless = false,
+        FakeDisplayName = "Stupid Fart",
+        FakeName = "gayboy",
+        FakeId = 39348582,
+    }
 end
 
-function disguisechar(char, id)
-	task.spawn(function()
-        print('called')
-		if not char then
-			return
-		end
-		local hum = char:FindFirstChildOfClass('Humanoid')
-		char:WaitForChild("Head")
-		local desc
-		if desc == nil then
-			local suc = false
-			repeat
-				suc = pcall(function()
-					desc = players:GetHumanoidDescriptionFromUserId(id)
-				end)
-				task.wait(1)
-			until suc
-		end
-		desc.HeightScale = hum:WaitForChild("HumanoidDescription").HeightScale
-		char.Archivable = true
-		local disguiseclone = char:Clone()
-		disguiseclone.Name = "disguisechar"
-		disguiseclone.Parent = workspace
-		for i, v in pairs(disguiseclone:GetChildren()) do
-			if v:IsA("Accessory") or v:IsA("ShirtGraphic") or v:IsA("Shirt") or v:IsA("Pants") then
-				v:Destroy()
-			end
-		end
-		disguiseclone.Humanoid:ApplyDescriptionClientServer(desc)
-		for i, v in pairs(char:GetChildren()) do
-			if (v:IsA("Accessory") and v:GetAttribute("InvItem") == nil and v:GetAttribute("ArmorSlot") == nil) or v:IsA("ShirtGraphic") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("BodyColors") then
-				v.Parent = game
-			end
-		end
-		char.ChildAdded:Connect(function(v)
-			if ((v:IsA("Accessory") and v:GetAttribute("InvItem") == nil and v:GetAttribute("ArmorSlot") == nil) or v:IsA("ShirtGraphic") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("BodyColors")) and v:GetAttribute("Disguise") == nil then
-				repeat
-					task.wait()
-					v.Parent = game
-				until v.Parent == game
-			end
-		end)
-		for i, v in pairs(disguiseclone:WaitForChild("Animate"):GetChildren()) do
-			v:SetAttribute("Disguise", true)
-			local real = char.Animate:FindFirstChild(v.Name)
-			if v:IsA("StringValue") and real then
-				real.Parent = game
-				v.Parent = char.Animate
-			end
-		end
-		for i, v in pairs(disguiseclone:GetChildren()) do
-			v:SetAttribute("Disguise", true)
-			if v:IsA("Accessory") then
-				for i2, v2 in pairs(v:GetDescendants()) do
-					if v2:IsA("Weld") and v2.Part1 then
-						v2.Part1 = char[v2.Part1.Name]
-					end
-				end
-				v.Parent = char
-			elseif v:IsA("ShirtGraphic") or v:IsA("Shirt") or v:IsA("Pants") or v:IsA("BodyColors") then
-				v.Parent = char
-			elseif v.Name == "Head" and v:FindFirstChildOfClass('SpecialMesh') then
-				char.Head:FindFirstChildOfClass('SpecialMesh').MeshId = v:FindFirstChildOfClass('SpecialMesh').MeshId
-			end
-		end
-		local localface = char:FindFirstChild("face", true)
-		local cloneface = disguiseclone:FindFirstChild("face", true)
-		if localface and cloneface then
-			localface.Parent = game
-			cloneface.Parent = char.Head
-		end
-		char.Humanoid.HumanoidDescription:SetEmotes(desc:GetEmotes())
-		char.Humanoid.HumanoidDescription:SetEquippedEmotes(desc:GetEquippedEmotes())
-		disguiseclone:Destroy()
-	end)
-end
-
-lp = game:GetService("Players").LocalPlayer
-oldUserId = tostring(lp.UserId)
-oldName = lp.Name
-oldDisplayName = lp.DisplayName
+local lp = players.LocalPlayer
+local oldUserId = tostring(lp.UserId)
+local oldName = lp.Name
+local oldDisplayName = lp.DisplayName
 
 local function fatty(len)
-	local charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	local s = ""
-	for i = 1, len do
-		local rand = math.random(1, #charset)
-		s = s .. charset:sub(rand, rand)
-	end
-	return s
+    local charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    local s = ""
+    for i = 1, len do
+        local rand = math.random(1, #charset)
+        s = s .. charset:sub(rand, rand)
+    end
+    return s
 end
 
 local Gay = {}
 
 for _, player in ipairs(players:GetPlayers()) do
-	game:GetService("Players").LocalPlayer.NameDisplayDistance = 1
-	if player ~= lp then
-		local fake = fatty(#player.DisplayName)
-		Gay[player.Name] = fatty(#player.Name)
-		Gay[player.DisplayName] = fake
+    game:GetService("Players").LocalPlayer.NameDisplayDistance = 1
+    if player ~= lp then
+        local fake = fatty(#player.DisplayName)
+        Gay[player.Name] = fatty(#player.Name)
+        Gay[player.DisplayName] = fake
 
-		pcall(function()
-			player.DisplayName = fake
-		end)
-	end
+        pcall(function()
+            player.DisplayName = fake
+        end)
+    end
 end
 
 task.spawn(function()
-	while task.wait() do
-		game:GetService("Players").LocalPlayer.NameDisplayDistance = 0
-		game:GetService("Players").LocalPlayer.NameDisplayDistance = 1
-	end
+    while task.wait() do
+        players.LocalPlayer.NameDisplayDistance = 0
+        players.LocalPlayer.NameDisplayDistance = 1
+    end
 end)
 
 players.PlayerAdded:Connect(function(player)
-	if player ~= lp then
-		player.CharacterAdded:Connect(function()
-			local fake = fatty(#player.DisplayName)
-			Gay[player.Name] = fatty(#player.Name)
-			Gay[player.DisplayName] = fake
+    if player ~= lp then
+        player.CharacterAdded:Connect(function()
+            local fake = fatty(#player.DisplayName)
+            Gay[player.Name] = fatty(#player.Name)
+            Gay[player.DisplayName] = fake
 
-			pcall(function()
-				player.DisplayName = fake
-			end)
-		end)
-	end
+            pcall(function()
+                player.DisplayName = fake
+            end)
+        end)
+    end
 end)
 
-
 local function processtext(text)
-	if not text or type(text) ~= "string" then
-		return ""
-	end
+    if not text or type(text) ~= "string" then
+        return ""
+    end
 
-	text = text:gsub(oldName, Config.FakeName)
-	text = text:gsub(oldUserId, tostring(Config.FakeId))
-	text = text:gsub(oldDisplayName, Config.FakeDisplayName)
+    text = text:gsub(oldName, Config.FakeName)
+    text = text:gsub(oldUserId, tostring(Config.FakeId))
+    text = text:gsub(oldDisplayName, Config.FakeDisplayName)
 
-	for realName, fakeName in pairs(Gay) do
-		text = text:gsub(realName, fakeName)
-	end
+    for realName, fakeName in pairs(Gay) do
+        text = text:gsub(realName, fakeName)
+    end
 
-	return text
+    return text
 end
 
 for i,v in next, game:GetDescendants() do
@@ -632,6 +555,7 @@ for i,v in next, game:GetDescendants() do
         end)
     end
 end
+
 game.DescendantAdded:Connect(function(descendant)
     if descendant:IsA("TextBox") or descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
         descendant.Text = processtext(descendant.Text)
@@ -642,29 +566,25 @@ game.DescendantAdded:Connect(function(descendant)
         end)
     end
 end)
+
 lp.DisplayName = Config.FakeDisplayName
 lp.CharacterAppearanceId = Config.FakeId
 
 if Config.Headless == true then
     task.spawn(function()
-   while wait() do
-        local char = lp.Character or lp.CharacterAdded:wait()
-        char:WaitForChild("Head").Transparency = 1
-        if char:WaitForChild("Head"):FindFirstChildOfClass("Decal") then
-            char.Head:FindFirstChildOfClass("Decal"):Destroy()
-        end
-    end
-    end)
-end
-
-pcall(function()
-   disguisechar(lp.Character,getgenv().Config.FakeId)
-end)
-
-lp.CharacterAdded:Connect(function()
-      disguisechar(lp.Character,getgenv().Config.FakeId)
-end)
+        while task.wait() do
+            local char = lp.Character or lp.CharacterAdded:Wait()
+            if char:FindFirstChild("Head") then
+                char.Head.Transparency = 1
+                local decal = char.Head:FindFirstChildOfClass("Decal")
+                if decal then
+                    decal:Destroy()
+                   end
+               end
+           end
+       end)
    end
+end
 })
 
 local originalPlayerValues = {}
@@ -727,861 +647,6 @@ KillerSurvival:AddToggle("AntiHiddenStats", {
         end
     end
 })
-
---[[
-local ZZ = Tabs.Main:AddLeftGroupbox('自动狂暴[杰森]')
-
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-local savedRange = lp:FindFirstChild("RagingPaceRange")
-local replicatedStorage = game:GetService("ReplicatedStorage")
-local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
-if not savedRange then
-    savedRange = Instance.new("NumberValue")
-    savedRange.Name = "RagingPaceRange"
-    savedRange.Value = 19
-    savedRange.Parent = lp
-end
-
-ZZ:AddToggle("JasonAutoRagingPace", {
-    Text = "自动狂暴",
-    Default = false,
-    Callback = function(enabled)
-        local threadId = tostring(math.random(1, 99999))
-        _G.RagingPaceThreadId = threadId
-        
-        local function shouldContinue()
-            return _G.RagingPaceThreadId == threadId and enabled
-        end
-        
-        local RunService = game:GetService("RunService")
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local RANGE = savedRange.Value
-        local SPAM_DURATION = 3
-        local COOLDOWN_TIME = 5
-        local activeCooldowns = {}
-
-        local animsToDetect = {
-            ["116618003477002"] = true,
-            ["119462383658044"] = true,
-            ["131696603025265"] = true,
-            ["121255898612475"] = true,
-            ["133491532453922"] = true,
-            ["103601716322988"] = true,
-            ["86371356500204"] = true,
-            ["72722244508749"] = true,
-            ["87259391926321"] = true,
-            ["96959123077498"] = true,
-        }
-
-        local function fireRagingPace()
-            local args = {
-                "UseActorAbility",
-                {
-                    buffer.fromstring("\"RagingPace\"")
-                }
-            }
-            ReplicatedStorage:WaitForChild("Modules")
-                :WaitForChild("Network")
-                :WaitForChild("RemoteEvent")
-                :FireServer(unpack(args))
-        end
-
-        local function isAnimationMatching(anim)
-            local id = tostring(anim.Animation and anim.Animation.AnimationId or "")
-            local numId = id:match("%d+")
-            return animsToDetect[numId] or false
-        end
-
-        local function runDetection()
-            local connection
-            connection = RunService.Heartbeat:Connect(function()
-                if not shouldContinue() then
-                    connection:Disconnect()
-                    return
-                end
-                
-                for _, player in ipairs(Players:GetPlayers()) do
-                    if not shouldContinue() then break end
-                    
-                    if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        local targetHRP = player.Character.HumanoidRootPart
-                        local myChar = lp.Character
-                        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
-                            local dist = (targetHRP.Position - myChar.HumanoidRootPart.Position).Magnitude
-                            if dist <= RANGE and (not activeCooldowns[player] or tick() - activeCooldowns[player] >= COOLDOWN_TIME) then
-                                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                                if humanoid then
-                                    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
-                                        if not shouldContinue() then break end
-                                        
-                                        if isAnimationMatching(track) then
-                                            activeCooldowns[player] = tick()
-                                            task.spawn(function()
-                                                local startTime = tick()
-                                                while shouldContinue() and tick() - startTime < SPAM_DURATION do
-                                                    fireRagingPace()
-                                                    task.wait(0.05)
-                                                end
-                                            end)
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
-            
-            return connection
-        end
-
-        if enabled then
-            if _G.RagingPaceConnection then
-                _G.RagingPaceConnection:Disconnect()
-                _G.RagingPaceConnection = nil
-            end
-            
-            _G.RagingPaceConnection = runDetection()
-        else
-            if _G.RagingPaceConnection then
-                _G.RagingPaceConnection:Disconnect()
-                _G.RagingPaceConnection = nil
-            end
-        end
-    end
-})
-
-ZZ:AddSlider("JasonAutoRagingPaceRange", {
-    Text = "狂暴触发距离",
-    Default = savedRange.Value,
-    Min = 1,
-    Max = 50,
-    Rounding = 0,
-    Compact = true,
-    Callback = function(value)
-        savedRange.Value = value
-    end
-})
---]]
-
-local SM = Tabs.Main:AddLeftGroupbox('背刺[TweTime]','volleyball')
-
-local replicatedStorage = game:GetService("ReplicatedStorage")
-local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
-
-function hasNotification(text)
-    for i, v in pairs(localPlayer.PlayerGui.Notis:GetChildren()) do
-        if string.find(v.Text:lower(), text) then
-            return true
-        end
-    end
-end
-local function backstab(model)
-    if not model then
-        return
-    else
-        local stabbing = tick()
-        local oldCf = localPlayer.Character.HumanoidRootPart.CFrame
-        task.spawn(function()
-            task.wait(0.2)
-            Network:WaitForChild("RemoteEvent"):FireServer("UseActorAbility", {buffer.fromstring("\"Dagger\"")})
-        end)
-        repeat
-            localPlayer.Character.HumanoidRootPart.CFrame = model.HumanoidRootPart.CFrame - (model.HumanoidRootPart.CFrame.LookVector * 1)
-            task.wait()
-        until (tick() - stabbing >= 3.5) or hasNotification("stab")
-        task.wait(0.5)
-        localPlayer.Character.HumanoidRootPart.CFrame = oldCf
-    end
-end
-local function backstabClose(model)
-    if not model then
-        return
-    else
-        if (localPlayer.Character.HumanoidRootPart.Position - model.HumanoidRootPart.Position).magnitude <= Options.BackstabRange.Value then
-            backstab(model)
-        end
-    end
-end
-
-SM:AddToggle("TweTimeAutoDagger", {
-    Text = "自动传送背刺",
-    Default = false,
-    Callback = function(cool)
-        task.spawn(function()
-            while Toggles.TweTimeAutoDagger.Value and task.wait(0.1) do
-                if hasAbilityReady("Dagger") and isSurvivor then
-                    local suc, res = pcall(backstab, killerModel)
-                    if not suc then
-                        warn("error when backstabbing:", res)
-                    end
-                end
-            end
-        end)
-    end
-})
-
-SM:AddToggle("TweTimeDaggerAura", {
-    Text = "背刺光环",
-    Default = false,
-    Callback = function(cool)
-        task.spawn(function()
-            while Toggles.TweTimeDaggerAura.Value and task.wait(0.1) do
-                if not Toggles.TweTimeAutoDagger.Value and hasAbilityReady("Dagger") and isSurvivor then
-                    local suc, res = pcall(backstabClose, killerModel)
-                    if not suc then
-                        warn("error when backstabbing near killer:", res)
-                    end
-                end
-            end
-        end)
-    end
-})
-
-
-SM:AddSlider("TweTimeBackstabRange", {
-    Text = "背刺光环范围",
-    Default = 20,
-    Min = 7,
-    Max = 99,
-    Rounding = 0
-})
-
---[[
-local ZZ = Tabs.Main:AddLeftGroupbox('<b><font color=\"rgb(255, 0, 0)\">飞行[最危险]</font></b>','plane')
-
-local RunService = game:GetService("RunService") --获取玩家操控位置函数
-local CFSpeed = 50
-local CFLoop = nil
-
-local function StartCFly()
-    local speaker = game.Players.LocalPlayer
-    local character = speaker.Character
-    if not character then return end
-    
-    local humanoid = character:FindFirstChildOfClass('Humanoid')
-    local head = character:WaitForChild("Head")
-    
-    if not humanoid or not head then return end
-    
-    humanoid.PlatformStand = true
-    head.Anchored = true
-    
-    if CFLoop then 
-        CFLoop:Disconnect() 
-        CFLoop = nil
-    end
-    
-    CFLoop = RunService.Heartbeat:Connect(function(deltaTime)
-        if not character or not humanoid or not head then 
-            if CFLoop then 
-                CFLoop:Disconnect() 
-                CFLoop = nil
-            end
-            return 
-        end
-        
-        local moveDirection = humanoid.MoveDirection * (CFSpeed * deltaTime)
-        local headCFrame = head.CFrame
-        local camera = workspace.CurrentCamera
-        local cameraCFrame = camera.CFrame
-        local cameraOffset = headCFrame:ToObjectSpace(cameraCFrame).Position
-        cameraCFrame = cameraCFrame * CFrame.new(-cameraOffset.X, -cameraOffset.Y, -cameraOffset.Z + 1)
-        local cameraPosition = cameraCFrame.Position
-        local headPosition = headCFrame.Position
-
-        local objectSpaceVelocity = CFrame.new(cameraPosition, Vector3.new(headPosition.X, cameraPosition.Y, headPosition.Z)):VectorToObjectSpace(moveDirection)
-        head.CFrame = CFrame.new(headPosition) * (cameraCFrame - cameraPosition) * CFrame.new(objectSpaceVelocity)
-    end)
-end
-
-local function StopCFly()
-    local speaker = game.Players.LocalPlayer
-    local character = speaker.Character
-    
-    if CFLoop then
-        CFLoop:Disconnect()
-        CFLoop = nil
-    end
-    
-    if character then
-        local humanoid = character:FindFirstChildOfClass('Humanoid')
-        local head = character:FindFirstChild("Head")
-        
-        if humanoid then
-            humanoid.PlatformStand = false
-        end
-        if head then
-            head.Anchored = false
-        end
-    end
-end
-
-ZZ:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[危险]</font></b> 你可能会被挂到Discord 可能会被封禁")
-
-ZZ:AddToggle("CFly", {
-    Text = "<b><font color=\"rgb(255, 0, 0)\">飞行</font></b>",
-    Default = false,
-    Callback = function(Value)
-        if Value then
-            StartCFly()
-        else
-            StopCFly()
-        end
-    end
-})
-
-ZZ:AddSlider("CFlySpeed", {
-    Text = "<font color=\"rgb(255, 0, 0)\">飞行速度</font>",
-    Default = 50,
-    Min = 1,
-    Max = 200,
-    Rounding = 1,
-    Callback = function(Value)
-        CFSpeed = Value
-    end
-})
---]]
---[[
-local Game = Tabs.Main:AddLeftGroupbox('对局游戏','gamepad-2')
-
-local hideBarConnection = nil
-local customIconId = "12549056837" 
-
-Game:AddInput('CustomIconInput', {
-    Default = '12549056837',
-    Numeric = false,
-    Finished = true,
-    ClearTextOnFocus = false,
-    Text = '替换玩家对局虚拟形象图标id',
-    Tooltip = '用于替换隐藏时显示的图标',
-    Placeholder = '请输入图片id',
-    Callback = function(value)
-        if tonumber(value) then
-            customIconId = value
-            Library:Notify("LightStar-提示\n图片更改成功", nil, 4590657391)
-        else
-            Library:Notify("LightStar-提示\n图片更改无效", nil, 4590657391)
-        end
-    end
-})
-
-Game:AddToggle('ChangeGamePlayerInput', {
-    Text = '替换玩家对局虚拟形象图标',
-    Default = false,
-    Callback = function(state)
-    if state then
-        local player = game:GetService("Players").LocalPlayer
-        local playergui = player:WaitForChild("PlayerGui")
-        local playerinfo = playergui:WaitForChild("TemporaryUI"):WaitForChild("PlayerInfo")
-        local icon = playerinfo:FindFirstChild("PlayerIcon")
-                    if icon and icon.Image ~= ("rbxassetid://" .. customIconId) then
-                        icon.Image = "rbxassetid://".. customIconId
-                    end
-                end
-             end
-})
-
-Game:AddToggle('HiddenGamePlayerColumn', {
-    Text = '隐藏游戏对局玩家列表',
-    Default = false,
-    Tooltip = '隐藏玩家列表以及自己玩家虚拟形象头像 拍脚本视频最必用的',
-    Callback = function(state)
-        local player = game:GetService("Players").LocalPlayer
-        local playergui = player:WaitForChild("PlayerGui")
-        local playerinfo = playergui:WaitForChild("TemporaryUI"):WaitForChild("PlayerInfo")
-        if state then
-            if not hideBarConnection then
-                hideBarConnection = game:GetService("RunService").RenderStepped:Connect(function()
-                    local survivors = playerinfo:FindFirstChild("CurrentSurvivors")
-                    if survivors and survivors.Visible then
-                        survivors.Visible = false
-                        end
-                end)
-             end
-        else
-            if hideBarConnection then
-                hideBarConnection:Disconnect()
-                hideBarConnection = nil
-            end
-            local survivors = playerinfo:FindFirstChild("CurrentSurvivors")
-            if survivors then
-                survivors.Visible = true
-            end
-        end
-    end
-})
---]]
-
-local AntiBan = Tabs.Main:AddRightGroupbox("绕过反作弊","heater")
-
-do
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    local LocalizationService = game:GetService("LocalizationService")
-    local RunService = game:GetService("RunService")
-
-    shared.AntiBanSafe = shared.AntiBanSafe or {running = false, hooks = {}}
-    local data = shared.AntiBanSafe
-
-    local oldNamecall, oldIndex
-    local protectionThread
-
-    -- 初始化hooks表
-    data.hooks = data.hooks or {
-        requestHooked = false,
-        findHooked = false,
-        bypassHooked = false
-    }
-
-    local function safe(func, ...)
-        local ok, res = pcall(func, ...)
-        if ok then return res end
-        return nil
-    end
-
-    local function disableReportFlags()
-        if type(setfflag) == "function" then
-            pcall(function()
-                setfflag("AbuseReportScreenshot", "False")
-                setfflag("AbuseReportScreenshotPercentage", "0")
-                setfflag("AbuseReportEnabled", "False")
-                setfflag("ReportAbuseMenu", "False")
-                setfflag("EnableAbuseReportScreenshot", "False")
-                setfflag("AbuseReportVideo", "False")
-                setfflag("AbuseReportVideoPercentage", "0")
-                setfflag("VideoCaptureEnabled", "False")
-                setfflag("RecordVideo", "False")
-            end)
-        end
-    end
-
-    local function hookRequests()
-        if data.hooks.requestHooked then return true end
-        
-        local oldRequest = (syn and syn.request) or (request and request) or (http_request and http_request)
-        if type(oldRequest) == "function" and type(hookfunction) == "function" then
-            local success = pcall(function()
-                hookfunction(oldRequest, function(req)
-                    if req and req.Url and tostring(req.Url):lower():find("abuse") then
-                        return {StatusCode = 200, Body = "Blocked"}
-                    end
-                    return oldRequest(req)
-                end)
-            end)
-            
-            if success then
-                data.hooks.requestHooked = true
-                return true
-            end
-        end
-        return false
-    end
-
-    local function hookFindFirstChild()
-        if data.hooks.findHooked then return true end
-        
-        local oldFind = workspace.FindFirstChild
-        if type(oldFind) == "function" and type(hookfunction) == "function" then
-            local success = pcall(function()
-                hookfunction(oldFind, function(self, name, ...)
-                    if checkcaller and checkcaller() then 
-                        return oldFind(self, name, ...) 
-                    end
-                    if name and tostring(name):lower():find("screenshot") then 
-                        return nil 
-                    end
-                    if name and tostring(name):lower():find("video") then 
-                        return nil 
-                    end
-                    return oldFind(self, name, ...)
-                end)
-            end)
-            
-            if success then
-                data.hooks.findHooked = true
-                return true
-            end
-        end
-        return false
-    end
-
-    local function setupMetatableHooks()
-        if data.hooks.bypassHooked then return true end
-        
-        if getrawmetatable and hookmetamethod and newcclosure then
-            local success = pcall(function()
-                local mt = getrawmetatable(game)
-                if not mt then return false end
-                
-                setreadonly(mt, false)
-                
-                -- 保存原始方法
-                oldNamecall = oldNamecall or mt.__namecall
-                oldIndex = oldIndex or mt.__index
-
-                -- 设置namecall hook
-                mt.__namecall = newcclosure(function(self, ...)
-                    if checkcaller and checkcaller() then
-                        return oldNamecall(self, ...)
-                    end
-                    
-                    local method = getnamecallmethod()
-                    local args = {...}
-
-                    if (method == "Kick" or method == "Ban") and self == LocalPlayer then 
-                        return nil 
-                    end
-
-                    if (method == "FireServer" or method == "InvokeServer") and args[1] then
-                        local msg = tostring(args[1]):lower()
-                        if msg:find("kick") or msg:find("ban") or msg:find("report") then 
-                            return nil 
-                        end
-                    end
-
-                    if self == LocalizationService and method == "GetCountryRegionForPlayerAsync" then
-                        local success, result = pcall(function()
-                            return LocalizationService:GetCountryRegionForPlayerAsync(LocalPlayer)
-                        end)
-                        if success then return result else return "US" end
-                    end
-
-                    return oldNamecall(self, ...)
-                end)
-
-                -- 设置index hook
-                mt.__index = newcclosure(function(t, k)
-                    if checkcaller and checkcaller() then
-                        return oldIndex(t, k)
-                    end
-                    
-                    local key = tostring(k):lower()
-                    if key:find("kick") or key:find("ban") or key:find("report") then 
-                        return function() return nil end 
-                    end
-                    return oldIndex(t, k)
-                end)
-
-                setreadonly(mt, true)
-            end)
-            
-            if success then
-                data.hooks.bypassHooked = true
-                return true
-            end
-        end
-        return false
-    end
-
-    local function restoreMetatableHooks()
-        if getrawmetatable and oldNamecall and oldIndex then
-            pcall(function()
-                local mt = getrawmetatable(game)
-                if mt then
-                    setreadonly(mt, false)
-                    mt.__namecall = oldNamecall
-                    mt.__index = oldIndex
-                    setreadonly(mt, true)
-                end
-            end)
-        end
-    end
-
-    local function startProtectionLoop()
-        if protectionThread then
-            task.cancel(protectionThread)
-        end
-        
-        protectionThread = task.spawn(function()
-            local lastCheck = os.clock()
-            local checkCount = 0
-            
-            while data.running do
-                local currentTime = os.clock()
-                
-                -- 每2秒执行一次完整的flag检查
-                if currentTime - lastCheck >= 2 then
-                    disableReportFlags()
-                    lastCheck = currentTime
-                    checkCount = checkCount + 1
-                    
-                    -- 每10次检查（20秒）输出一次调试信息
-                    if checkCount % 10 == 0 then
-                        print(string.format("[绕过反作弊] 保护循环运行 - 检查 #%d", checkCount))
-                    end
-                end
-                
-                -- 使用小延迟避免占用过多CPU
-                task.wait(0.1)
-            end
-            print("[绕过反作弊] 保护循环停止")
-        end)
-    end
-
-    local function startAntiBanSafe()
-        if data.running then 
-            Library:Notify("LightStar-提示\n反作弊绕过已在运行中")
-            return true
-        end
-        
-        -- 检查必要的exploit函数
-        if not (getrawmetatable and hookmetamethod and newcclosure) then
-            Library:Notify("LightStar-提示\nExploit不支持必要的函数")
-            return false
-        end
-
-        data.running = true
-
-        -- 异步执行避免卡顿
-        task.spawn(function()
-            local hooksApplied = 0
-            local totalHooks = 3
-            
-            -- 应用hooks
-            if hookRequests() then hooksApplied = hooksApplied + 1 end
-            if hookFindFirstChild() then hooksApplied = hooksApplied + 1 end
-            if setupMetatableHooks() then hooksApplied = hooksApplied + 1 end
-            
-            -- 启动保护循环
-            startProtectionLoop()
-
-            if hooksApplied > 0 then
-                Library:Notify(string.format("LightStar-提示\n绕过反作弊已开启！(%d/%d hooks)", hooksApplied, totalHooks))
-                print("[绕过反作弊] 绕过反作弊保护成功激活")
-            
-                Library:Notify("LightStar-警告\n部分hook应用失败")
-            end
-        end)
-        
-        return true
-    end
-
-    local function stopAntiBanSafe()
-        if not data.running then return end
-        
-        print("[绕过反作弊] 停止绕过反作弊...")
-        data.running = false
-        
-        -- 停止保护线程
-        if protectionThread then
-            task.cancel(protectionThread)
-            protectionThread = nil
-        end
-        
-        -- 异步恢复hooks
-        task.spawn(function()
-            restoreMetatableHooks()
-            
-            -- 重置hook状态
-            data.hooks.requestHooked = false
-            data.hooks.findHooked = false
-            data.hooks.bypassHooked = false
-            oldNamecall = nil
-            oldIndex = nil
-            
-            Library:Notify("LightStar-提示\n反作弊绕过已关闭")
-            print("[绕过反作弊] 绕过反作弊完全停止")
-        end)
-    end
-
-    local function toggleAntiBan(enabled)
-        if enabled then
-            return startAntiBanSafe()
-        else
-            stopAntiBanSafe()
-            return true
-        end
-    end
-
-    
-AntiBan:AddToggle("AntiBanAC", {
-        Text = "绕过AC",
-        Default = data.running or false,
-        Callback = function(enabled)
-            local success = toggleAntiBan(enabled)
-            if not success and enabled then
-           
-                task.spawn(function()
-                    wait(0.1)
-                    if AntiBan:GetToggle("AntiBanToggle") then
-                        AntiBan:GetToggle("AntiBanToggle"):SetValue(false)
-                    end
-                end)
-            end
-        end
-})
-
-   
-    if data.running then
-        task.spawn(function()
-            wait(1)
-            if AntiBan:GetToggle("AntiBanToggle") then
-                AntiBan:GetToggle("AntiBanToggle"):SetValue(true)
-                print("[绕过反作弊] 恢复以前的绕过反作弊保护状态")
-            end
-        end)
-    end
-
-  
-    print(string.format("[绕过反作弊] 初始化 - 运行: %s", tostring(data.running)))
-end
-
-do
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    local LocalizationService = game:GetService("LocalizationService")
-
-    shared.AntiBanSafe = shared.AntiBanSafe or {running = false, hooks = {}}
-    local data = shared.AntiBanSafe
-
-    local oldNamecall, oldIndex
-    local protectionThread
-
-    local function safe(func, ...)
-        local ok, res = pcall(func, ...)
-        if ok then return res end
-    end
-
-    local function disableReportFlags()
-        if typeof(setfflag) == "function" then
-            pcall(function()
-                setfflag("AbuseReportScreenshot", "False")
-                setfflag("AbuseReportScreenshotPercentage", "0")
-                setfflag("AbuseReportEnabled", "False")
-                setfflag("ReportAbuseMenu", "False")
-                setfflag("EnableAbuseReportScreenshot", "False")
-                setfflag("AbuseReportVideo", "False")
-                setfflag("AbuseReportVideoPercentage", "0")
-                setfflag("VideoCaptureEnabled", "False")
-                setfflag("RecordVideo", "False")
-            end)
-        end
-    end
-
-    local function setFlagsOn()
-        if typeof(setfflag) == "function" then
-            pcall(function()
-                setfflag("AbuseReportScreenshot", "True")
-                setfflag("AbuseReportScreenshotPercentage", "100")
-            end)
-        end
-    end
-
-    local function hookRequests()
-        if data.hooks.requestHooked then return end
-        local oldRequest = (syn and syn.request) or request or http_request
-        if typeof(oldRequest) == "function" and typeof(hookfunction) == "function" then
-            hookfunction(oldRequest, function(req)
-                if req and req.Url and tostring(req.Url):lower():find("abuse") then
-                    return {StatusCode = 200, Body = "Blocked"}
-                end
-                return oldRequest(req)
-            end)
-            data.hooks.requestHooked = true
-        end
-    end
-
-    local function hookFindFirstChild()
-        if data.hooks.findHooked then return end
-        local oldFind = workspace.FindFirstChild
-        if typeof(oldFind) == "function" and typeof(hookfunction) == "function" then
-            hookfunction(oldFind, function(self, name, ...)
-                if name and tostring(name):lower():find("screenshot") then return nil end
-                if name and tostring(name):lower():find("video") then return nil end
-                return oldFind(self, name, ...)
-            end)
-            data.hooks.findHooked = true
-        end
-    end
-
-    local function safeBypass()
-        if getrawmetatable and hookmetamethod and newcclosure then
-            local mt = getrawmetatable(game)
-            setreadonly(mt, false)
-            oldNamecall = oldNamecall or mt.__namecall
-            oldIndex = oldIndex or mt.__index
-
-            mt.__namecall = newcclosure(function(self, ...)
-                local method = getnamecallmethod()
-                local args = {...}
-
-                if (method == "Kick" or method == "Ban") and self == LocalPlayer then return nil end
-
-                if (method == "FireServer" or method == "InvokeServer") and args[1] then
-                    local msg = tostring(args[1]):lower()
-                    if msg:find("kick") or msg:find("ban") then return nil end
-                end
-
-                if self == LocalizationService and method == "GetCountryRegionForPlayerAsync" then
-                    local success, result = pcall(function()
-                        return LocalizationService:GetCountryRegionForPlayerAsync(LocalPlayer)
-                    end)
-                    if success then return result else return "US" end
-                end
-
-                return oldNamecall(self, ...)
-            end)
-
-            mt.__index = newcclosure(function(t, k)
-                local key = tostring(k):lower()
-                if key:find("kick") or key:find("ban") then return function() return nil end end
-                return oldIndex(t, k)
-            end)
-
-            setreadonly(mt, true)
-        end
-    end
-
-    local function restoreHooks()
-        if getrawmetatable then
-            local mt = getrawmetatable(game)
-            setreadonly(mt, false)
-            if oldNamecall then mt.__namecall = oldNamecall end
-            if oldIndex then mt.__index = oldIndex end
-            setreadonly(mt, true)
-            oldNamecall, oldIndex = nil, nil
-        end
-    end
-
-    local function startAntiBanSafe()
-        if data.running then return end
-        data.running = true
-
-        safe(hookRequests)
-        safe(hookFindFirstChild)
-        safe(safeBypass)
-
-        protectionThread = task.spawn(function()
-            while data.running do
-                safe(disableReportFlags)
-                task.wait(0.2)
-            end
-        end)
-    end
-
-    local function stopAntiBanSafe()
-        data.running = false
-        protectionThread = nil
-        restoreHooks()
-        setFlagsOn()
-    end
-
-AntiBan:AddToggle("AntiBanV2", {
-        Text = "绕过反作弊V2",
-        Description = "保护您免受封禁和举报",
-        Default = false,
-        Callback = function(state)
-            if state then
-                startAntiBanSafe()
-            else
-                stopAntiBanSafe()
-            end
-        end
-})
-end
 
 local MainTabbox = Tabs.Main:AddRightTabbox()
 local Camera = MainTabbox:AddTab("相机","camera")
@@ -1750,74 +815,6 @@ Teleport:AddButton({
     end
 })
 
-local ZZ = Tabs.Main:AddRightGroupbox('物品','shopping-basket')
-
-ZZ:AddToggle("ItemsAura", {
-    Text = "物品光环",
-    Default = false,
-    Callback = function (call)
-        _G.pickUpNear = call
-        task.spawn(function()
-            while _G.pickUpNear and task.wait() do
-                pcall(function()
-                    if isKiller then return end
-                    local items = {}
-                    if workspace:FindFirstChild("Map") and gameMap:FindFirstChild("Ingame") then
-                        for _, v in pairs(gameMap.Ingame:GetChildren()) do
-                            if v:IsA("Tool") and v:FindFirstChild("ItemRoot") then
-                                table.insert(items, v.ItemRoot)
-                            end
-                        end
-                        for _, v in pairs(gameMap.Ingame.Map:GetChildren()) do
-                            if v:IsA("Tool") and v:FindFirstChild("ItemRoot") then
-                                table.insert(items, v.ItemRoot)
-                            end
-                        end
-                    end
-                    for _, itemRoot in pairs(items) do
-                        local lp = localPlayer
-                        if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-                            local magnitude = (lp.Character.HumanoidRootPart.Position - itemRoot.Position).Magnitude
-                            if magnitude <= 10 then
-                                if itemRoot:FindFirstChild("ProximityPrompt") then
-                                    fireproximityprompt(itemRoot.ProximityPrompt)
-                                end
-                            end
-                        end
-                    end
-                end)
-            end
-        end)
-    end
-})
-
-ZZ:AddButton({
-    Text = "传送物品",
-    Func = function()
-        pcall(function()
-            if isKiller then return end
-            local items = {}
-            if workspace:FindFirstChild("Map") and gameMap:FindFirstChild("Ingame") then
-                for _, v in pairs(gameMap.Ingame:GetDescendants()) do
-                    if v:IsA("Tool") and v:FindFirstChild("ItemRoot") then
-                        table.insert(items, v.ItemRoot)
-                    end
-                end
-            end
-            for _, itemRoot in pairs(items) do
-                local toolName = itemRoot.Parent and itemRoot.Parent.Name
-                if toolName and not localPlayer.Backpack:FindFirstChild(toolName) then
-                    localPlayer.Character.HumanoidRootPart.CFrame = itemRoot.CFrame
-                    task.wait(0.5)
-                    if itemRoot:FindFirstChild("ProximityPrompt") then
-                        fireproximityprompt(itemRoot.ProximityPrompt)
-                    end
-                end
-            end
-        end)
-    end
-})
-
 --[[
 local AutoChanceCoinFlip = Tabs.Main:AddRightGroupbox('自动Chance硬币')
 
@@ -1875,19 +872,6 @@ local jasonMaxDistance = 50
 -- 创建UI
 local SB = Tabs.Aimbot:AddLeftGroupbox('幸存者','locate-fixed')
 
--- Chance自瞄距离滑块
-SB:AddSlider('ChanceAimbotDistance', {
-    Text = 'Chance自瞄距离',
-    Default = 50,
-    Min = 10,
-    Max = 150,
-    Rounding = 1,
-    Compact = false,
-    Callback = function(value)
-        chanceMaxDistance = value
-    end
-})
-
 -- TwoTime自瞄距离滑块
 SB:AddSlider('TwoTimeAimbotDistance', {
     Text = 'TwoTime自瞄距离',
@@ -1915,54 +899,6 @@ SB:AddSlider('ShedletskyAimbotDistance', {
 })
 
 -- 幸存者自瞄功能
-local function chanceAimbot(state)
-    CA = state
-    if state then
-        if game.Players.LocalPlayer.Character.Name ~= "Chance" then
-            Library:Notify("你的角色不是Chance 无法生效", nil, 4590657391)
-            return
-        end
-        
-        local RemoteEvent = game:GetService("ReplicatedStorage")
-            :WaitForChild("Modules")
-            :WaitForChild("Network")
-            :WaitForChild("RemoteEvent")
-            
-        CAbotConnection = RemoteEvent.OnClientEvent:Connect(function(...)
-            local args = {...}
-            if args[1] == "UseActorAbility" and args[2] == "Shoot" then 
-                local killerContainer = game.Workspace.Players:FindFirstChild("Killers")
-                if killerContainer then 
-                    local killer = killerContainer:FindFirstChildOfClass("Model")
-                    if killer and killer:FindFirstChild("HumanoidRootPart") then 
-                        local killerHRP = killer.HumanoidRootPart
-                        local playerHRP = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                        if playerHRP then 
-                            local distance = (killerHRP.Position - playerHRP.Position).Magnitude
-                            if distance <= chanceMaxDistance then
-                                local TMP = 0.35
-                                local AMD = 2
-                                local endTime = tick() + AMD
-                                while tick() < endTime do
-                                    RunService.RenderStepped:Wait()
-                                    local predictedTarget = killerHRP.Position + (killerHRP.Velocity * TMP)
-                                    game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame = killerHRP.CFrame + Vector3.new(0, 0, -2)
-                                end
-                                game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.CFrame = PICF
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if CAbotConnection then
-            CAbotConnection:Disconnect()
-            CAbotConnection = nil
-        end
-    end
-end
-
 local function TWO(state)
     local TWOsounds = {
         "rbxassetid://86710781315432",
@@ -2340,13 +1276,6 @@ local function jasonaimbot(state)
         end
     end
 end
-
--- 幸存者UI
-SB:AddToggle('ChanceAimbot', {
-    Text = 'Chance 自瞄 ',
-    Default = false,
-    Callback = chanceAimbot
-})
 
 SB:AddToggle('TwoTimeAimbot', {
     Text = 'TwoTime 自瞄',
@@ -5366,7 +4295,7 @@ Visual:AddSlider("FootOffset", {
     end
 })
 
-local Visual = Tabs.Esp:AddLeftGroupbox("物品ESP","shopping-basket")
+local Visual = Tabs.Esp:AddLeftGroupbox("特殊ESP","shopping-basket")
 
 local LibESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/ImamGV/Script/main/ESP"))()
 
@@ -9116,6 +8045,929 @@ AdvancedGroup:AddSlider("DashSpeed", {
 })
 --]]
 
+--[[
+local ZZ = Tabs.Main:AddLeftGroupbox('自动狂暴[杰森]')
+
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local savedRange = lp:FindFirstChild("RagingPaceRange")
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
+if not savedRange then
+    savedRange = Instance.new("NumberValue")
+    savedRange.Name = "RagingPaceRange"
+    savedRange.Value = 19
+    savedRange.Parent = lp
+end
+
+ZZ:AddToggle("JasonAutoRagingPace", {
+    Text = "自动狂暴",
+    Default = false,
+    Callback = function(enabled)
+        local threadId = tostring(math.random(1, 99999))
+        _G.RagingPaceThreadId = threadId
+        
+        local function shouldContinue()
+            return _G.RagingPaceThreadId == threadId and enabled
+        end
+        
+        local RunService = game:GetService("RunService")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local RANGE = savedRange.Value
+        local SPAM_DURATION = 3
+        local COOLDOWN_TIME = 5
+        local activeCooldowns = {}
+
+        local animsToDetect = {
+            ["116618003477002"] = true,
+            ["119462383658044"] = true,
+            ["131696603025265"] = true,
+            ["121255898612475"] = true,
+            ["133491532453922"] = true,
+            ["103601716322988"] = true,
+            ["86371356500204"] = true,
+            ["72722244508749"] = true,
+            ["87259391926321"] = true,
+            ["96959123077498"] = true,
+        }
+
+        local function fireRagingPace()
+            local args = {
+                "UseActorAbility",
+                {
+                    buffer.fromstring("\"RagingPace\"")
+                }
+            }
+            ReplicatedStorage:WaitForChild("Modules")
+                :WaitForChild("Network")
+                :WaitForChild("RemoteEvent")
+                :FireServer(unpack(args))
+        end
+
+        local function isAnimationMatching(anim)
+            local id = tostring(anim.Animation and anim.Animation.AnimationId or "")
+            local numId = id:match("%d+")
+            return animsToDetect[numId] or false
+        end
+
+        local function runDetection()
+            local connection
+            connection = RunService.Heartbeat:Connect(function()
+                if not shouldContinue() then
+                    connection:Disconnect()
+                    return
+                end
+                
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if not shouldContinue() then break end
+                    
+                    if player ~= lp and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local targetHRP = player.Character.HumanoidRootPart
+                        local myChar = lp.Character
+                        if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                            local dist = (targetHRP.Position - myChar.HumanoidRootPart.Position).Magnitude
+                            if dist <= RANGE and (not activeCooldowns[player] or tick() - activeCooldowns[player] >= COOLDOWN_TIME) then
+                                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                                if humanoid then
+                                    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                                        if not shouldContinue() then break end
+                                        
+                                        if isAnimationMatching(track) then
+                                            activeCooldowns[player] = tick()
+                                            task.spawn(function()
+                                                local startTime = tick()
+                                                while shouldContinue() and tick() - startTime < SPAM_DURATION do
+                                                    fireRagingPace()
+                                                    task.wait(0.05)
+                                                end
+                                            end)
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+            
+            return connection
+        end
+
+        if enabled then
+            if _G.RagingPaceConnection then
+                _G.RagingPaceConnection:Disconnect()
+                _G.RagingPaceConnection = nil
+            end
+            
+            _G.RagingPaceConnection = runDetection()
+        else
+            if _G.RagingPaceConnection then
+                _G.RagingPaceConnection:Disconnect()
+                _G.RagingPaceConnection = nil
+            end
+        end
+    end
+})
+
+ZZ:AddSlider("JasonAutoRagingPaceRange", {
+    Text = "狂暴触发距离",
+    Default = savedRange.Value,
+    Min = 1,
+    Max = 50,
+    Rounding = 0,
+    Compact = true,
+    Callback = function(value)
+        savedRange.Value = value
+    end
+})
+--]]
+
+local SM = Tabs.Mess:AddLeftGroupbox('背刺[TweTime]','volleyball')
+
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
+
+function hasNotification(text)
+    for i, v in pairs(localPlayer.PlayerGui.Notis:GetChildren()) do
+        if string.find(v.Text:lower(), text) then
+            return true
+        end
+    end
+end
+local function backstab(model)
+    if not model then
+        return
+    else
+        local stabbing = tick()
+        local oldCf = localPlayer.Character.HumanoidRootPart.CFrame
+        task.spawn(function()
+            task.wait(0.2)
+            Network:WaitForChild("RemoteEvent"):FireServer("UseActorAbility", {buffer.fromstring("\"Dagger\"")})
+        end)
+        repeat
+            localPlayer.Character.HumanoidRootPart.CFrame = model.HumanoidRootPart.CFrame - (model.HumanoidRootPart.CFrame.LookVector * 1)
+            task.wait()
+        until (tick() - stabbing >= 3.5) or hasNotification("stab")
+        task.wait(0.5)
+        localPlayer.Character.HumanoidRootPart.CFrame = oldCf
+    end
+end
+local function backstabClose(model)
+    if not model then
+        return
+    else
+        if (localPlayer.Character.HumanoidRootPart.Position - model.HumanoidRootPart.Position).magnitude <= Options.BackstabRange.Value then
+            backstab(model)
+        end
+    end
+end
+
+SM:AddToggle("TweTimeAutoDagger", {
+    Text = "自动传送背刺",
+    Default = false,
+    Callback = function(cool)
+        task.spawn(function()
+            while Toggles.TweTimeAutoDagger.Value and task.wait(0.1) do
+                if hasAbilityReady("Dagger") and isSurvivor then
+                    local suc, res = pcall(backstab, killerModel)
+                    if not suc then
+                        warn("error when backstabbing:", res)
+                    end
+                end
+            end
+        end)
+    end
+})
+
+SM:AddToggle("TweTimeDaggerAura", {
+    Text = "背刺光环",
+    Default = false,
+    Callback = function(cool)
+        task.spawn(function()
+            while Toggles.TweTimeDaggerAura.Value and task.wait(0.1) do
+                if not Toggles.TweTimeAutoDagger.Value and hasAbilityReady("Dagger") and isSurvivor then
+                    local suc, res = pcall(backstabClose, killerModel)
+                    if not suc then
+                        warn("error when backstabbing near killer:", res)
+                    end
+                end
+            end
+        end)
+    end
+})
+
+
+SM:AddSlider("TweTimeBackstabRange", {
+    Text = "背刺光环范围",
+    Default = 20,
+    Min = 7,
+    Max = 99,
+    Rounding = 0
+})
+
+local ZZ = Tabs.Mess:AddRightGroupbox('物品','shopping-basket')
+
+ZZ:AddToggle("ItemsAura", {
+    Text = "物品光环",
+    Default = false,
+    Callback = function (call)
+        _G.pickUpNear = call
+        task.spawn(function()
+            while _G.pickUpNear and task.wait() do
+                pcall(function()
+                    if isKiller then return end
+                    local items = {}
+                    if workspace:FindFirstChild("Map") and gameMap:FindFirstChild("Ingame") then
+                        for _, v in pairs(gameMap.Ingame:GetChildren()) do
+                            if v:IsA("Tool") and v:FindFirstChild("ItemRoot") then
+                                table.insert(items, v.ItemRoot)
+                            end
+                        end
+                        for _, v in pairs(gameMap.Ingame.Map:GetChildren()) do
+                            if v:IsA("Tool") and v:FindFirstChild("ItemRoot") then
+                                table.insert(items, v.ItemRoot)
+                            end
+                        end
+                    end
+                    for _, itemRoot in pairs(items) do
+                        local lp = localPlayer
+                        if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+                            local magnitude = (lp.Character.HumanoidRootPart.Position - itemRoot.Position).Magnitude
+                            if magnitude <= 10 then
+                                if itemRoot:FindFirstChild("ProximityPrompt") then
+                                    fireproximityprompt(itemRoot.ProximityPrompt)
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end)
+    end
+})
+
+ZZ:AddButton({
+    Text = "传送物品",
+    Func = function()
+        pcall(function()
+            if isKiller then return end
+            local items = {}
+            if workspace:FindFirstChild("Map") and gameMap:FindFirstChild("Ingame") then
+                for _, v in pairs(gameMap.Ingame:GetDescendants()) do
+                    if v:IsA("Tool") and v:FindFirstChild("ItemRoot") then
+                        table.insert(items, v.ItemRoot)
+                    end
+                end
+            end
+            for _, itemRoot in pairs(items) do
+                local toolName = itemRoot.Parent and itemRoot.Parent.Name
+                if toolName and not localPlayer.Backpack:FindFirstChild(toolName) then
+                    localPlayer.Character.HumanoidRootPart.CFrame = itemRoot.CFrame
+                    task.wait(0.5)
+                    if itemRoot:FindFirstChild("ProximityPrompt") then
+                        fireproximityprompt(itemRoot.ProximityPrompt)
+                    end
+                end
+            end
+        end)
+    end
+})
+
+--[[
+local ZZ = Tabs.Mess:AddLeftGroupbox('<b><font color=\"rgb(255, 0, 0)\">飞行[最危险]</font></b>','plane')
+
+local RunService = game:GetService("RunService") --获取玩家操控位置函数
+local CFSpeed = 50
+local CFLoop = nil
+
+local function StartCFly()
+    local speaker = game.Players.LocalPlayer
+    local character = speaker.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass('Humanoid')
+    local head = character:WaitForChild("Head")
+    
+    if not humanoid or not head then return end
+    
+    humanoid.PlatformStand = true
+    head.Anchored = true
+    
+    if CFLoop then 
+        CFLoop:Disconnect() 
+        CFLoop = nil
+    end
+    
+    CFLoop = RunService.Heartbeat:Connect(function(deltaTime)
+        if not character or not humanoid or not head then 
+            if CFLoop then 
+                CFLoop:Disconnect() 
+                CFLoop = nil
+            end
+            return 
+        end
+        
+        local moveDirection = humanoid.MoveDirection * (CFSpeed * deltaTime)
+        local headCFrame = head.CFrame
+        local camera = workspace.CurrentCamera
+        local cameraCFrame = camera.CFrame
+        local cameraOffset = headCFrame:ToObjectSpace(cameraCFrame).Position
+        cameraCFrame = cameraCFrame * CFrame.new(-cameraOffset.X, -cameraOffset.Y, -cameraOffset.Z + 1)
+        local cameraPosition = cameraCFrame.Position
+        local headPosition = headCFrame.Position
+
+        local objectSpaceVelocity = CFrame.new(cameraPosition, Vector3.new(headPosition.X, cameraPosition.Y, headPosition.Z)):VectorToObjectSpace(moveDirection)
+        head.CFrame = CFrame.new(headPosition) * (cameraCFrame - cameraPosition) * CFrame.new(objectSpaceVelocity)
+    end)
+end
+
+local function StopCFly()
+    local speaker = game.Players.LocalPlayer
+    local character = speaker.Character
+    
+    if CFLoop then
+        CFLoop:Disconnect()
+        CFLoop = nil
+    end
+    
+    if character then
+        local humanoid = character:FindFirstChildOfClass('Humanoid')
+        local head = character:FindFirstChild("Head")
+        
+        if humanoid then
+            humanoid.PlatformStand = false
+        end
+        if head then
+            head.Anchored = false
+        end
+    end
+end
+
+ZZ:AddLabel("<b><font color=\"rgb(255, 0, 0)\">[危险]</font></b> 你可能会被挂到Discord 可能会被封禁")
+
+ZZ:AddToggle("CFly", {
+    Text = "<b><font color=\"rgb(255, 0, 0)\">飞行</font></b>",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            StartCFly()
+        else
+            StopCFly()
+        end
+    end
+})
+
+ZZ:AddSlider("CFlySpeed", {
+    Text = "<font color=\"rgb(255, 0, 0)\">飞行速度</font>",
+    Default = 50,
+    Min = 1,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(Value)
+        CFSpeed = Value
+    end
+})
+--]]
+--[[
+local Game = Tabs.Mess:AddLeftGroupbox('对局游戏','gamepad-2')
+
+local hideBarConnection = nil
+local customIconId = "12549056837" 
+
+Game:AddInput('CustomIconInput', {
+    Default = '12549056837',
+    Numeric = false,
+    Finished = true,
+    ClearTextOnFocus = false,
+    Text = '替换玩家对局虚拟形象图标id',
+    Tooltip = '用于替换隐藏时显示的图标',
+    Placeholder = '请输入图片id',
+    Callback = function(value)
+        if tonumber(value) then
+            customIconId = value
+            Library:Notify("LightStar-提示\n图片更改成功", nil, 4590657391)
+        else
+            Library:Notify("LightStar-提示\n图片更改无效", nil, 4590657391)
+        end
+    end
+})
+
+Game:AddToggle('ChangeGamePlayerInput', {
+    Text = '替换玩家对局虚拟形象图标',
+    Default = false,
+    Callback = function(state)
+    if state then
+        local player = game:GetService("Players").LocalPlayer
+        local playergui = player:WaitForChild("PlayerGui")
+        local playerinfo = playergui:WaitForChild("TemporaryUI"):WaitForChild("PlayerInfo")
+        local icon = playerinfo:FindFirstChild("PlayerIcon")
+                    if icon and icon.Image ~= ("rbxassetid://" .. customIconId) then
+                        icon.Image = "rbxassetid://".. customIconId
+                    end
+                end
+             end
+})
+
+Game:AddToggle('HiddenGamePlayerColumn', {
+    Text = '隐藏游戏对局玩家列表',
+    Default = false,
+    Tooltip = '隐藏玩家列表以及自己玩家虚拟形象头像 拍脚本视频最必用的',
+    Callback = function(state)
+        local player = game:GetService("Players").LocalPlayer
+        local playergui = player:WaitForChild("PlayerGui")
+        local playerinfo = playergui:WaitForChild("TemporaryUI"):WaitForChild("PlayerInfo")
+        if state then
+            if not hideBarConnection then
+                hideBarConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                    local survivors = playerinfo:FindFirstChild("CurrentSurvivors")
+                    if survivors and survivors.Visible then
+                        survivors.Visible = false
+                        end
+                end)
+             end
+        else
+            if hideBarConnection then
+                hideBarConnection:Disconnect()
+                hideBarConnection = nil
+            end
+            local survivors = playerinfo:FindFirstChild("CurrentSurvivors")
+            if survivors then
+                survivors.Visible = true
+            end
+        end
+    end
+})
+--]]
+
+local AntiBan = Tabs.Mess:AddRightGroupbox("绕过反作弊","heater")
+
+do
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local LocalizationService = game:GetService("LocalizationService")
+    local RunService = game:GetService("RunService")
+
+    shared.AntiBanSafe = shared.AntiBanSafe or {running = false, hooks = {}}
+    local data = shared.AntiBanSafe
+
+    local oldNamecall, oldIndex
+    local protectionThread
+
+    -- 初始化hooks表
+    data.hooks = data.hooks or {
+        requestHooked = false,
+        findHooked = false,
+        bypassHooked = false
+    }
+
+    local function safe(func, ...)
+        local ok, res = pcall(func, ...)
+        if ok then return res end
+        return nil
+    end
+
+    local function disableReportFlags()
+        if type(setfflag) == "function" then
+            pcall(function()
+                setfflag("AbuseReportScreenshot", "False")
+                setfflag("AbuseReportScreenshotPercentage", "0")
+                setfflag("AbuseReportEnabled", "False")
+                setfflag("ReportAbuseMenu", "False")
+                setfflag("EnableAbuseReportScreenshot", "False")
+                setfflag("AbuseReportVideo", "False")
+                setfflag("AbuseReportVideoPercentage", "0")
+                setfflag("VideoCaptureEnabled", "False")
+                setfflag("RecordVideo", "False")
+            end)
+        end
+    end
+
+    local function hookRequests()
+        if data.hooks.requestHooked then return true end
+        
+        local oldRequest = (syn and syn.request) or (request and request) or (http_request and http_request)
+        if type(oldRequest) == "function" and type(hookfunction) == "function" then
+            local success = pcall(function()
+                hookfunction(oldRequest, function(req)
+                    if req and req.Url and tostring(req.Url):lower():find("abuse") then
+                        return {StatusCode = 200, Body = "Blocked"}
+                    end
+                    return oldRequest(req)
+                end)
+            end)
+            
+            if success then
+                data.hooks.requestHooked = true
+                return true
+            end
+        end
+        return false
+    end
+
+    local function hookFindFirstChild()
+        if data.hooks.findHooked then return true end
+        
+        local oldFind = workspace.FindFirstChild
+        if type(oldFind) == "function" and type(hookfunction) == "function" then
+            local success = pcall(function()
+                hookfunction(oldFind, function(self, name, ...)
+                    if checkcaller and checkcaller() then 
+                        return oldFind(self, name, ...) 
+                    end
+                    if name and tostring(name):lower():find("screenshot") then 
+                        return nil 
+                    end
+                    if name and tostring(name):lower():find("video") then 
+                        return nil 
+                    end
+                    return oldFind(self, name, ...)
+                end)
+            end)
+            
+            if success then
+                data.hooks.findHooked = true
+                return true
+            end
+        end
+        return false
+    end
+
+    local function setupMetatableHooks()
+        if data.hooks.bypassHooked then return true end
+        
+        if getrawmetatable and hookmetamethod and newcclosure then
+            local success = pcall(function()
+                local mt = getrawmetatable(game)
+                if not mt then return false end
+                
+                setreadonly(mt, false)
+                
+                -- 保存原始方法
+                oldNamecall = oldNamecall or mt.__namecall
+                oldIndex = oldIndex or mt.__index
+
+                -- 设置namecall hook
+                mt.__namecall = newcclosure(function(self, ...)
+                    if checkcaller and checkcaller() then
+                        return oldNamecall(self, ...)
+                    end
+                    
+                    local method = getnamecallmethod()
+                    local args = {...}
+
+                    if (method == "Kick" or method == "Ban") and self == LocalPlayer then 
+                        return nil 
+                    end
+
+                    if (method == "FireServer" or method == "InvokeServer") and args[1] then
+                        local msg = tostring(args[1]):lower()
+                        if msg:find("kick") or msg:find("ban") or msg:find("report") then 
+                            return nil 
+                        end
+                    end
+
+                    if self == LocalizationService and method == "GetCountryRegionForPlayerAsync" then
+                        local success, result = pcall(function()
+                            return LocalizationService:GetCountryRegionForPlayerAsync(LocalPlayer)
+                        end)
+                        if success then return result else return "US" end
+                    end
+
+                    return oldNamecall(self, ...)
+                end)
+
+                -- 设置index hook
+                mt.__index = newcclosure(function(t, k)
+                    if checkcaller and checkcaller() then
+                        return oldIndex(t, k)
+                    end
+                    
+                    local key = tostring(k):lower()
+                    if key:find("kick") or key:find("ban") or key:find("report") then 
+                        return function() return nil end 
+                    end
+                    return oldIndex(t, k)
+                end)
+
+                setreadonly(mt, true)
+            end)
+            
+            if success then
+                data.hooks.bypassHooked = true
+                return true
+            end
+        end
+        return false
+    end
+
+    local function restoreMetatableHooks()
+        if getrawmetatable and oldNamecall and oldIndex then
+            pcall(function()
+                local mt = getrawmetatable(game)
+                if mt then
+                    setreadonly(mt, false)
+                    mt.__namecall = oldNamecall
+                    mt.__index = oldIndex
+                    setreadonly(mt, true)
+                end
+            end)
+        end
+    end
+
+    local function startProtectionLoop()
+        if protectionThread then
+            task.cancel(protectionThread)
+        end
+        
+        protectionThread = task.spawn(function()
+            local lastCheck = os.clock()
+            local checkCount = 0
+            
+            while data.running do
+                local currentTime = os.clock()
+                
+                -- 每2秒执行一次完整的flag检查
+                if currentTime - lastCheck >= 2 then
+                    disableReportFlags()
+                    lastCheck = currentTime
+                    checkCount = checkCount + 1
+                    
+                    -- 每10次检查（20秒）输出一次调试信息
+                    if checkCount % 10 == 0 then
+                        print(string.format("[绕过反作弊] 保护循环运行 - 检查 #%d", checkCount))
+                    end
+                end
+                
+                -- 使用小延迟避免占用过多CPU
+                task.wait(0.1)
+            end
+            print("[绕过反作弊] 保护循环停止")
+        end)
+    end
+
+    local function startAntiBanSafe()
+        if data.running then 
+            Library:Notify("LightStar-提示\n反作弊绕过已在运行中")
+            return true
+        end
+        
+        -- 检查必要的exploit函数
+        if not (getrawmetatable and hookmetamethod and newcclosure) then
+            Library:Notify("LightStar-提示\nExploit不支持必要的函数")
+            return false
+        end
+
+        data.running = true
+
+        -- 异步执行避免卡顿
+        task.spawn(function()
+            local hooksApplied = 0
+            local totalHooks = 3
+            
+            -- 应用hooks
+            if hookRequests() then hooksApplied = hooksApplied + 1 end
+            if hookFindFirstChild() then hooksApplied = hooksApplied + 1 end
+            if setupMetatableHooks() then hooksApplied = hooksApplied + 1 end
+            
+            -- 启动保护循环
+            startProtectionLoop()
+
+            if hooksApplied > 0 then
+                Library:Notify(string.format("LightStar-提示\n绕过反作弊已开启！(%d/%d hooks)", hooksApplied, totalHooks))
+                print("[绕过反作弊] 绕过反作弊保护成功激活")
+            
+                Library:Notify("LightStar-警告\n部分hook应用失败")
+            end
+        end)
+        
+        return true
+    end
+
+    local function stopAntiBanSafe()
+        if not data.running then return end
+        
+        print("[绕过反作弊] 停止绕过反作弊...")
+        data.running = false
+        
+        -- 停止保护线程
+        if protectionThread then
+            task.cancel(protectionThread)
+            protectionThread = nil
+        end
+        
+        -- 异步恢复hooks
+        task.spawn(function()
+            restoreMetatableHooks()
+            
+            -- 重置hook状态
+            data.hooks.requestHooked = false
+            data.hooks.findHooked = false
+            data.hooks.bypassHooked = false
+            oldNamecall = nil
+            oldIndex = nil
+            
+            Library:Notify("LightStar-提示\n反作弊绕过已关闭")
+            print("[绕过反作弊] 绕过反作弊完全停止")
+        end)
+    end
+
+    local function toggleAntiBan(enabled)
+        if enabled then
+            return startAntiBanSafe()
+        else
+            stopAntiBanSafe()
+            return true
+        end
+    end
+
+    
+AntiBan:AddToggle("AntiBanAC", {
+        Text = "绕过AC",
+        Default = data.running or false,
+        Callback = function(enabled)
+            local success = toggleAntiBan(enabled)
+            if not success and enabled then
+           
+                task.spawn(function()
+                    wait(0.1)
+                    if AntiBan:GetToggle("AntiBanToggle") then
+                        AntiBan:GetToggle("AntiBanToggle"):SetValue(false)
+                    end
+                end)
+            end
+        end
+})
+
+   
+    if data.running then
+        task.spawn(function()
+            wait(1)
+            if AntiBan:GetToggle("AntiBanToggle") then
+                AntiBan:GetToggle("AntiBanToggle"):SetValue(true)
+                print("[绕过反作弊] 恢复以前的绕过反作弊保护状态")
+            end
+        end)
+    end
+
+  
+    print(string.format("[绕过反作弊] 初始化 - 运行: %s", tostring(data.running)))
+end
+
+do
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local LocalizationService = game:GetService("LocalizationService")
+
+    shared.AntiBanSafe = shared.AntiBanSafe or {running = false, hooks = {}}
+    local data = shared.AntiBanSafe
+
+    local oldNamecall, oldIndex
+    local protectionThread
+
+    local function safe(func, ...)
+        local ok, res = pcall(func, ...)
+        if ok then return res end
+    end
+
+    local function disableReportFlags()
+        if typeof(setfflag) == "function" then
+            pcall(function()
+                setfflag("AbuseReportScreenshot", "False")
+                setfflag("AbuseReportScreenshotPercentage", "0")
+                setfflag("AbuseReportEnabled", "False")
+                setfflag("ReportAbuseMenu", "False")
+                setfflag("EnableAbuseReportScreenshot", "False")
+                setfflag("AbuseReportVideo", "False")
+                setfflag("AbuseReportVideoPercentage", "0")
+                setfflag("VideoCaptureEnabled", "False")
+                setfflag("RecordVideo", "False")
+            end)
+        end
+    end
+
+    local function setFlagsOn()
+        if typeof(setfflag) == "function" then
+            pcall(function()
+                setfflag("AbuseReportScreenshot", "True")
+                setfflag("AbuseReportScreenshotPercentage", "100")
+            end)
+        end
+    end
+
+    local function hookRequests()
+        if data.hooks.requestHooked then return end
+        local oldRequest = (syn and syn.request) or request or http_request
+        if typeof(oldRequest) == "function" and typeof(hookfunction) == "function" then
+            hookfunction(oldRequest, function(req)
+                if req and req.Url and tostring(req.Url):lower():find("abuse") then
+                    return {StatusCode = 200, Body = "Blocked"}
+                end
+                return oldRequest(req)
+            end)
+            data.hooks.requestHooked = true
+        end
+    end
+
+    local function hookFindFirstChild()
+        if data.hooks.findHooked then return end
+        local oldFind = workspace.FindFirstChild
+        if typeof(oldFind) == "function" and typeof(hookfunction) == "function" then
+            hookfunction(oldFind, function(self, name, ...)
+                if name and tostring(name):lower():find("screenshot") then return nil end
+                if name and tostring(name):lower():find("video") then return nil end
+                return oldFind(self, name, ...)
+            end)
+            data.hooks.findHooked = true
+        end
+    end
+
+    local function safeBypass()
+        if getrawmetatable and hookmetamethod and newcclosure then
+            local mt = getrawmetatable(game)
+            setreadonly(mt, false)
+            oldNamecall = oldNamecall or mt.__namecall
+            oldIndex = oldIndex or mt.__index
+
+            mt.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+
+                if (method == "Kick" or method == "Ban") and self == LocalPlayer then return nil end
+
+                if (method == "FireServer" or method == "InvokeServer") and args[1] then
+                    local msg = tostring(args[1]):lower()
+                    if msg:find("kick") or msg:find("ban") then return nil end
+                end
+
+                if self == LocalizationService and method == "GetCountryRegionForPlayerAsync" then
+                    local success, result = pcall(function()
+                        return LocalizationService:GetCountryRegionForPlayerAsync(LocalPlayer)
+                    end)
+                    if success then return result else return "US" end
+                end
+
+                return oldNamecall(self, ...)
+            end)
+
+            mt.__index = newcclosure(function(t, k)
+                local key = tostring(k):lower()
+                if key:find("kick") or key:find("ban") then return function() return nil end end
+                return oldIndex(t, k)
+            end)
+
+            setreadonly(mt, true)
+        end
+    end
+
+    local function restoreHooks()
+        if getrawmetatable then
+            local mt = getrawmetatable(game)
+            setreadonly(mt, false)
+            if oldNamecall then mt.__namecall = oldNamecall end
+            if oldIndex then mt.__index = oldIndex end
+            setreadonly(mt, true)
+            oldNamecall, oldIndex = nil, nil
+        end
+    end
+
+    local function startAntiBanSafe()
+        if data.running then return end
+        data.running = true
+
+        safe(hookRequests)
+        safe(hookFindFirstChild)
+        safe(safeBypass)
+
+        protectionThread = task.spawn(function()
+            while data.running do
+                safe(disableReportFlags)
+                task.wait(0.2)
+            end
+        end)
+    end
+
+    local function stopAntiBanSafe()
+        data.running = false
+        protectionThread = nil
+        restoreHooks()
+        setFlagsOn()
+    end
+
+AntiBan:AddToggle("AntiBanV2", {
+        Text = "绕过反作弊V2",
+        Description = "保护您免受封禁和举报",
+        Default = false,
+        Callback = function(state)
+            if state then
+                startAntiBanSafe()
+            else
+                stopAntiBanSafe()
+            end
+        end
+})
+end
+
 local SM = Tabs.FightingKilling:AddLeftGroupbox('杀戮功能[杀手]')
 
 local Players = game:GetService("Players")
@@ -10112,10 +9964,10 @@ SM:AddToggle('KillAll', {
     Text = "自动攻击所有玩家",
     Callback = function(s)
         if s and playingState == "Spectating" then
-            Library:Notify("LightStar-提示", "必须在一轮 窥视时无法使用此功能", 7)
+            Library:Notify("LightStar-提示\n必须在一轮 窥视时无法使用此功能", 7)
         end
         if s and isSurvivor then
-            Library:Notify("LightStar-提示", "要使用此功能 您必须是杀手", 7)
+            Library:Notify("LightStar-提示\n要使用此功能 您必须是杀手", 7)
         end
         if not (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")) then Toggles.KillAll:SetValue(false) return end
         for _, v in pairs(workspace.Players.Survivors:GetChildren()) do
