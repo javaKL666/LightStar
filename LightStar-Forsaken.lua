@@ -80,6 +80,8 @@ local actor = Network:WaitForChild("RemoteEvent")
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 local gameMap = workspace.Map
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
 
 Library.ForceCheckbox = false -- 默认点击开关盒子 (false / true)
 Library.ShowToggleFrameInKeybinds = true 
@@ -99,7 +101,7 @@ local Tabs = {
     Mess = Window:AddTab('杂乱','biohazard','很多功能杂乱在这里'),
     FightingKilling = Window:AddTab('战斗&杀戮','swords','让变得打击更轻松!!!'),
     Block = Window:AddTab('格挡','target','让你自动抵御杀手的攻击!!!'),
-    BanEffect = Window:AddTab('反效果','cpu','让你无法受到效果!!!'),
+    BanEffect = Window:AddTab('反效果&角色','cpu','让你无法受到效果!!!'),
     AnimationAction = Window:AddTab('动作','file','让你在别人面前动作炫酷!!!'),
     PhysicalStrength = Window:AddTab('体力','zap','让你奔跑体力最大!!!'),
     Generator = Window:AddTab('发动机','printer','让你修发动机更快!!!'),
@@ -149,14 +151,36 @@ end
 function killerAttack()
     if hasAbilityReady("Slash") then
         Network.RemoteEvent:FireServer("UseActorAbility", {buffer.fromstring("\"Slash\"")})
-    elseif hasAbilityReady("Punch") then
-        Network.RemoteEvent:FireServer("UseActorAbility", {buffer.fromstring("\"Punch\"")})
     elseif hasAbilityReady("Stab") then
         Network.RemoteEvent:FireServer("UseActorAbility", {buffer.fromstring("\"Stab\"")})
     elseif hasAbilityReady("Carving Slash") then
         Network.RemoteEvent:FireServer("UseActorAbility", {buffer.fromstring("\"Carving Slash\"")})
     end
 end
+
+--
+pcall(function()
+    if workspace.Players.Spectating:FindFirstChild(localPlayer.Name) then
+        playingState = "Spectating"
+    else
+        playingState = "Playing"
+    end
+
+    workspace.Players.Spectating.ChildAdded:Connect(function(v)
+        if v.Name == localPlayer.Name then
+            playingState = "Spectating"
+            Library:Notify("LightStar-提示\n"..playingState, 3)
+        end
+    end)
+
+    workspace.Players.Spectating.ChildRemoved:Connect(function(v)
+        if v.Name == localPlayer.Name then
+            playingState = "Playing"
+            Library:Notify("LightStar-提示\n初始化对局游戏", 3)
+        end
+    end)
+end)
+--]]
 
 --[[
 local new = Tabs.new:AddLeftGroupbox('新闻','rocket')
@@ -785,84 +809,83 @@ Lighting:AddToggle("启用功能",{
 
 local Teleport = Tabs.Main:AddRightGroupbox('传送',"clapperboard")
 
--- 独立传送函数
-local function TeleportToKiller()
-    if playingState == "Spectating" then
-        Library:Notify("LightStar-提示", "窥视状态下无法使用此功能", 7)
-        return -- 修复：不满足条件直接退出
-    end
-
-    local killer = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") and workspace.Players.Killers:GetChildren()[1]
-    if killer then
-        pcall(function()
-            -- 修复：增加空值检查，防止报错
-            if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and killer:FindFirstChild("HumanoidRootPart") then
-                localPlayer.Character.HumanoidRootPart.CFrame = killer.HumanoidRootPart.CFrame
-            end
-        end)
-    end
-end
-
-local function TeleportToRandomSurvivor()
-    if playingState == "Spectating" then
-        Library:Notify("LightStar-提示", "窥视状态下无法使用此功能", 7)
-        return -- 修复：不满足条件直接退出
-    end
-    pcall(function()
-        if not (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")) then return end
-        local survs = workspace.Players.Survivors:GetChildren()
-        if #survs == 0 then return end
-
-        -- 修复：增加空值检查，防止报错
-        local target = survs[math.random(1, #survs)]
-        if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and target:FindFirstChild("HumanoidRootPart") then
-            localPlayer.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame
-        end
-    end)
-end
-
--- 按钮（只调用函数）
+-- 主菜单里只保留按钮，传送逻辑通过 loadstring 动态执行
 Teleport:AddButton({
     Text = "传送杀手",
-    Func = TeleportToKiller
+    Func = function()
+        if playingState == "Spectating" then
+            Library:Notify("LightStar-提示", "窥视状态下无法使用此功能", 7)
+            return
+        end
+        -- 动态执行传送逻辑，不占用主脚本寄存器
+        loadstring([[
+            pcall(function()
+                if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and
+                   workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") and
+                   workspace.Players.Killers:GetChildren()[1] and workspace.Players.Killers:GetChildren()[1]:FindFirstChild("HumanoidRootPart") then
+                    localPlayer.Character.HumanoidRootPart.CFrame = workspace.Players.Killers:GetChildren()[1].HumanoidRootPart.CFrame
+                end
+            end)
+        ]])()
+    end
 })
 
 Teleport:AddButton({
     Text = "传送随机幸存者",
-    Func = TeleportToRandomSurvivor
+    Func = function()
+        if playingState == "Spectating" then
+            Library:Notify("LightStar-提示", "窥视状态下无法使用此功能", 7)
+            return
+        end
+        -- 动态执行传送逻辑，不占用主脚本寄存器
+        loadstring([[
+            pcall(function()
+                local survs = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors") and workspace.Players.Survivors:GetChildren()
+                if survs and #survs > 0 then
+                    local target = survs[math.random(1, #survs)]
+                    if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and target:FindFirstChild("HumanoidRootPart") then
+                        localPlayer.Character.HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame
+                    end
+                end
+            end)
+        ]])()
+    end
 })
 
 --[[
 local AutoChanceCoinFlip = Tabs.Main:AddRightGroupbox('自动Chance硬币')
 
-local replicatedStorage = game:GetService("ReplicatedStorage")
-local Network = replicatedStorage:WaitForChild("Modules"):WaitForChild("Network")
+_G.auto_coin = false
+_G.coin_delay = 2
 
 AutoChanceCoinFlip:AddSlider("AutoChanceCoinFlipmew",{
     Text = "#秒抛1次硬币",
-    Min = 1.8,
-    Default = 2,
-    Max = 15,
-    Rounding = 0.1,
-    Callback = function()
-       end
+    Min = 1,
+    Default = 2, 
+    Max = 15,  
+    Rounding = 1,
+    Callback = function(val)
+        _G.coin_delay = val
+    end
 })
 
 AutoChanceCoinFlip:AddToggle("AutoChanceCoinFlip", {
     Text = "自动Chance抛硬币",
     Default = false,
-    Callback = function (cool)
-        _G.coin = cool
-        task.spawn(function()
-            while _G.coin and task.wait(Options.AutoChanceCoinFlipmew.Value) do
-                Network:WaitForChild("RemoteEvent"):FireServer("UseActorAbility", {buffer.fromstring("\"CoinFlip\"")})
-            end
-        end)
+    Callback = function(cool)
+        _G.auto_coin = cool
     end
 })
+
+task.spawn(function()
+    while true do
+        if _G.auto_coin then
+            Network:FireServer("UseActorAbility", {buffer.fromstring("\"CoinFlip\"")})
+        end
+        task.wait(_G.coin_delay)
+    end
+end)
 --]]
-
-
 
 local Size = 5
 local speed = 1
@@ -7580,50 +7603,6 @@ getgenv().DisableC00lkidd = function()
    getgenv().deactivateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "C00lkiddCollision")
 end
 
-local globalEnv = getgenv()
-globalEnv.walkSpeed = 100
-globalEnv.toggle = false
-globalEnv.connection = nil
-
-function globalEnv.getCharacter()
-   return globalEnv.LocalPlayer.Character or globalEnv.LocalPlayer.CharacterAdded:Wait()
-end
-
-function globalEnv.onHeartbeat()
-   local player = globalEnv.LocalPlayer
-   local character = globalEnv.getCharacter()
-   if character.Name ~= "c00lkidd" then return end
-   
-   local char = globalEnv.getCharacter()
-   local rootPart = char:FindFirstChild("HumanoidRootPart")
-   local humanoid = char:FindFirstChildOfClass("Humanoid")
-   local lv = rootPart and rootPart:FindFirstChild("LinearVelocity")
-   
-   if not rootPart or not humanoid or not lv then return end
-   
-   if lv then
-       lv.VectorVelocity = Vector3.new(math.huge, math.huge, math.huge)
-       lv.Enabled = false
-   end
-
-   local stopMovement = false
-   local validValues = {
-       Timeout = true,
-       Collide = true,
-       Hit = true
-   }
-
-   if not stopMovement then
-       local lookVector = workspace.CurrentCamera.CFrame.LookVector
-       local moveDir = Vector3.new(lookVector.X, 0, lookVector.Z)
-       if moveDir.Magnitude > 0 then
-           moveDir = moveDir.Unit
-           rootPart.Velocity = Vector3.new(moveDir.X * globalEnv.walkSpeed, rootPart.Velocity.Y, moveDir.Z * globalEnv.walkSpeed)
-           rootPart.CFrame = CFrame.new(rootPart.Position, rootPart.Position + moveDir)
-       end
-   end
-end
-
 local function validTarget(player)
    if not player or player == getgenv().LocalPlayer then return false end
    local char = player.Character
@@ -8983,15 +8962,17 @@ AntiBan:AddToggle("AntiBanAC", {
 })
 
    
-    if data.running then
-        task.spawn(function()
-            wait(1)
-            if AntiBan:GetToggle("AntiBanToggle") then
-                AntiBan:GetToggle("AntiBanToggle"):SetValue(true)
-                print("[绕过反作弊] 恢复以前的绕过反作弊保护状态")
-            end
-        end)
-    end
+if data.running then
+    task.spawn(function()
+        wait(1)
+        -- 假设 AntiBan 模块有一个 isEnabled 属性
+        if AntiBan.isEnabled then
+            print("[绕过反作弊] 恢复以前的绕过反作弊保护状态")
+            -- 这里可以写你需要执行的逻辑
+        end
+    end)
+end
+
 
   
     print(string.format("[绕过反作弊] 初始化 - 运行: %s", tostring(data.running)))
@@ -9860,418 +9841,6 @@ SM:AddToggle("HitboxTracking", {
 })
 
 --[[
-local SM = Tabs.FightingKilling:AddLeftGroupbox('自调Hitbox追踪')
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local RootPart = Character:WaitForChild("HumanoidRootPart")
-
-LocalPlayer.CharacterAdded:Connect(function(newChar)
-    Character = newChar
-    RootPart = Character:WaitForChild("HumanoidRootPart")
-end)
-
-local Settings = {
-    WallCheck = false,       -- 穿墙检测（保留）
-    FilterKillers = false,   -- 过滤杀手（保留）
-    FilterSurvivors = false  -- 过滤幸存者（保留）
-}
-
--- 目标合法性验证：穿墙检测 + 阵营过滤
-local function isValidTarget(model, humanoidRootPart)
-    if not model or not humanoidRootPart then return false end
-    if model == Character then return false end
-
-    -- 穿墙检测
-    if Settings.WallCheck then
-        local rayParams = RaycastParams.new()
-        rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-        rayParams.FilterDescendantsInstances = {Character, model}
-        rayParams.IgnoreWater = true
-
-        local direction = humanoidRootPart.Position - RootPart.Position
-        local rayResult = workspace:Raycast(
-            RootPart.Position,
-            direction.Unit * direction.Magnitude,
-            rayParams
-        )
-
-        if rayResult and not rayResult.Instance:IsDescendantOf(model) then
-            return false
-        end
-    end
-
-    -- 过滤杀手
-    if Settings.FilterKillers then
-        local killersFolder = workspace.Players:FindFirstChild("Killers")
-        if killersFolder and model:IsDescendantOf(killersFolder) then
-            return false
-        end
-    end
-
-    -- 过滤幸存者
-    if Settings.FilterSurvivors then
-        local survivorsFolder = workspace.Players:FindFirstChild("Survivors")
-        if survivorsFolder and model:IsDescendantOf(survivorsFolder) then
-            return false
-        end
-    end
-
-    return true
-end
-
-local HitboxTrackingEnabled = false
-local HeartbeatConnection = nil
-local MaxDistance = 120
-local FilterSurvivors = false
-local FilterKillers = false
-local WallCheckEnabled = false 
-
-local Killers = {
-    ["Slasher"] = true, ["1x1x1x1"] = true, ["c00lkidd"] = true,
-    ["Noli"] = true, ["JohnDoe"] = true, ["Guest 666"] = true,
-    ["Sixer"] = true
-}
-local Survivors = {
-    ["Noob"] = true, ["Guest1337"] = true, ["Elliot"] = true,
-    ["Shedletsky"] = true, ["TwoTime"] = true, ["007n7"] = true,
-    ["Chance"] = true, ["Builderman"] = true, ["Taph"] = true,
-    ["Dusekkar"] = true, ["Veeronica"] = true
-}
-
-local AttackAnimations = {
-    'rbxassetid://131430497821198',
-    'rbxassetid://83829782357897',
-    'rbxassetid://126830014841198',
-    'rbxassetid://126355327951215',
-    'rbxassetid://121086746534252',
-    'rbxassetid://105458270463374',
-    'rbxassetid://18885919947',
-    'rbxassetid://18885909645',
-    'rbxassetid://87259391926321',
-    'rbxassetid://106014898528300',
-    'rbxassetid://86545133269813',
-    'rbxassetid://89448354637442',
-    'rbxassetid://90499469533503',
-    'rbxassetid://116618003477002',
-    'rbxassetid://106086955212611',
-    'rbxassetid://107640065977686',
-    'rbxassetid://77124578197357',
-    'rbxassetid://101771617803133',
-    'rbxassetid://134958187822107',
-    'rbxassetid://111313169447787',
-    'rbxassetid://71685573690338',
-    'rbxassetid://129843313690921',
-    'rbxassetid://97623143664485',
-    'rbxassetid://136007065400978',
-    'rbxassetid://86096387000557',
-    'rbxassetid://108807732150251',
-    'rbxassetid://138040001965654',
-    'rbxassetid://73502073176819',
-    'rbxassetid://86709774283672',
-    'rbxassetid://140703210927645',
-    'rbxassetid://96173857867228',
-    'rbxassetid://121255898612475',
-    'rbxassetid://98031287364865',
-    'rbxassetid://119462383658044',
-    'rbxassetid://77448521277146',
-    'rbxassetid://103741352379819',
-    'rbxassetid://131696603025265',
-    'rbxassetid://122503338277352',
-    'rbxassetid://97648548303678',
-    'rbxassetid://94162446513587',
-    'rbxassetid://84426150435898',
-    'rbxassetid://93069721274110',
-    'rbxassetid://114620047310688',
-    'rbxassetid://97433060861952',
-    'rbxassetid://82183356141401',
-    'rbxassetid://100592913030351',
-    'rbxassetid://121293883585738',
-    'rbxassetid://70447634862911',
-    'rbxassetid://92173139187970',
-    'rbxassetid://106847695270773',
-    'rbxassetid://125403313786645',
-    'rbxassetid://81639435858902',
-    'rbxassetid://137314737492715',
-    'rbxassetid://120112897026015',
-    'rbxassetid://82113744478546',
-    'rbxassetid://118298475669935',
-    'rbxassetid://126681776859538',
-    'rbxassetid://129976080405072',
-    'rbxassetid://109667959938617',
-    'rbxassetid://74707328554358',
-    'rbxassetid://133336594357903',
-    'rbxassetid://86204001129974',
-    'rbxassetid://124243639579224',
-    'rbxassetid://70371667919898',
-    'rbxassetid://131543461321709',
-    'rbxassetid://136323728355613',
-    'rbxassetid://109230267448394',
-    'rbxassetid://139835501033932',
-    'rbxassetid://106538427162796',
-    'rbxassetid://110400453990786',
-    'rbxassetid://83685305553364',
-    'rbxassetid://126171487400618',
-    'rbxassetid://122709416391891',
-    'rbxassetid://87989533095285',
-    'rbxassetid://119326397274934',
-    'rbxassetid://140365014326125',
-    'rbxassetid://139309647473555',
-    'rbxassetid://133363345661032',
-    'rbxassetid://128414736976503',
-    'rbxassetid://121808371053483',
-    'rbxassetid://88451353906104',
-    'rbxassetid://81299297965542',
-    'rbxassetid://99829427721752',
-    'rbxassetid://126896426760253',
-    'rbxassetid://77375846492436',
-    'rbxassetid://94634594529334',
-    'rbxassetid://101031946095087'
-    
-}
-
-SM:AddSlider("DistanceSlider", {
-    Text = "追踪范围",
-    Default = 120,
-    Min = 1,
-    Max = 300,
-    Rounding = 0,
-    Callback = function(value)
-        MaxDistance = value
-    end
-})
-
-SM:AddToggle("FilterSurvivorsToggle", {
-    Text = "过滤[不追踪]幸存者",
-    Default = false,
-    Callback = function(state)
-        FilterSurvivors = state
-    end
-})
-
-SM:AddToggle("FilterKillersToggle", {
-    Text = "过滤[不追踪]杀手",
-    Default = false,
-    Callback = function(state)
-        FilterKillers = state
-    end
-})
-
-SM:AddToggle("WallCheck", {
-    Text = "墙壁检测",
-    Default = false,
-    Callback = function(state)
-        WallCheckEnabled = state
-    end
-})
-
-SM:AddToggle("HitboxTracking", {
-    Text = "Hitbox追踪",
-    Default = false,
-    Callback = function(state)
-        HitboxTrackingEnabled = state
-        
-        if HeartbeatConnection then
-            HeartbeatConnection:Disconnect()
-            HeartbeatConnection = nil
-        end
-        
-        if not state then return end
-        
-        repeat task.wait() until game:IsLoaded();
-
-        local Players = game:GetService('Players');
-        local Player = Players.LocalPlayer;
-        local Character = Player.Character or Player.CharacterAdded:Wait();
-        local Humanoid = Character:WaitForChild("Humanoid");
-        local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart");
-
-        Player.CharacterAdded:Connect(function(NewCharacter)
-            Character = NewCharacter;
-            Humanoid = Character:WaitForChild("Humanoid");
-            HumanoidRootPart = Character:WaitForChild("HumanoidRootPart");
-        end);
-
-        local RNG = Random.new();
-        local RaycastParams = RaycastParams.new()  
-        RaycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-        RaycastParams.IgnoreWater = true
-        
-        
-        local function isTargetVisible(targetCharacter)
-            if not WallCheckEnabled or not targetCharacter or not targetCharacter:FindFirstChild("HumanoidRootPart") then
-                return true
-            end
-            
-            local targetHRP = targetCharacter.HumanoidRootPart
-            local origin = HumanoidRootPart.Position
-            local direction = (targetHRP.Position - origin).Unit
-            local distance = (targetHRP.Position - origin).Magnitude
-            
-           
-            local filterList = {Character, targetCharacter}
-            RaycastParams.FilterDescendantsInstances = filterList
-            
-            local rayResult = workspace:Raycast(origin, direction * distance, RaycastParams)
-            
-           
-            if not rayResult then
-                return true
-            end
-            
-        
-            local hitInstance = rayResult.Instance
-            if hitInstance and hitInstance:IsDescendantOf(targetCharacter) then
-                return true
-            end
-            
-            
-            return false
-        end
-        
-        local function getCharacterRole(character)
-            local modelName = character.Name
-            if Killers[modelName] then
-                return "Killer"
-            elseif Survivors[modelName] then
-                return "Survivor"
-            end
-            return "Unknown"
-        end
-        
-        HeartbeatConnection = game:GetService('RunService').Heartbeat:Connect(function()
-            if not HitboxTrackingEnabled or not HumanoidRootPart then
-                return;
-            end
-
-            local Playing = false;
-            for _,v in Humanoid:GetPlayingAnimationTracks() do
-                if table.find(AttackAnimations, v.Animation.AnimationId) and (v.TimePosition / v.Length < 0.75) then
-                    Playing = true;
-                end
-            end
-
-            if not Playing then
-                return;
-            end
-
-            local PlayerRole = getCharacterRole(Character)
-            local OppositeTable = nil
-            if PlayerRole == "Killer" then
-                OppositeTable = Survivors
-            elseif PlayerRole == "Survivor" then
-                OppositeTable = Killers
-            end
-
-            local Target = nil
-            local CurrentNearestDist = MaxDistance
-
-            local OppTarget = nil
-            local OppNearestDist = MaxDistance
-
-            local function loopForOpp(t)
-                for _,v in pairs(t) do
-                    if v == Character or not v:FindFirstChild("HumanoidRootPart") or not v:FindFirstChild("Humanoid") then
-                        continue
-                    end
-                    
-                 
-                    if WallCheckEnabled and not isTargetVisible(v) then
-                        continue
-                    end
-                    
-                    local modelName = v.Name
-                    if OppositeTable and OppositeTable[modelName] then
-                        local Dist = (v.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
-                        if Dist < OppNearestDist then
-                            OppNearestDist = Dist
-                            OppTarget = v
-                        end
-                    end
-                end
-            end
-
-            if OppositeTable then
-                loopForOpp(workspace.Players:GetDescendants())
-                local npcsFolder = workspace.Map:FindFirstChild("NPCs", true)
-                if npcsFolder then
-                    loopForOpp(npcsFolder:GetChildren())
-                end
-            end
-
-            local function loopAll(t)
-                for _,v in pairs(t) do
-                    if v == Character or not v:FindFirstChild("HumanoidRootPart") or not v:FindFirstChild("Humanoid") then
-                        continue
-                    end
-                    
-                   
-                    if WallCheckEnabled and not isTargetVisible(v) then
-                        continue
-                    end
-                    
-                    local characterRole = getCharacterRole(v)
-                    
-                    if FilterSurvivors and characterRole == "Survivor" then
-                        continue
-                    end
-                    if FilterKillers and characterRole == "Killer" then
-                        continue
-                    end
-                    
-                    if PlayerRole == "Killer" and characterRole == "Killer" then
-                        continue
-                    end
-                    if PlayerRole == "Survivor" and characterRole == "Survivor" then
-                        continue
-                    end
-                    
-                    local Dist = (v.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
-                    if Dist < CurrentNearestDist then
-                        CurrentNearestDist = Dist
-                        Target = v
-                    end
-                end
-            end
-
-            local FinalTarget = nil
-            if OppTarget then
-                FinalTarget = OppTarget
-            else
-                loopAll(workspace.Players:GetDescendants())
-                local npcsFolder2 = workspace.Map:FindFirstChild("NPCs", true)
-                if npcsFolder2 then
-                    loopAll(npcsFolder2:GetChildren())
-                end
-                FinalTarget = Target
-            end
-
-            if not FinalTarget then
-                return;
-            end
-
-            local OldVelocity = HumanoidRootPart.Velocity;
-            local NeededVelocity =
-            (FinalTarget.HumanoidRootPart.Position + Vector3.new(
-                RNG:NextNumber(-1.5, 1.5),
-                0,
-                RNG:NextNumber(-1.5, 1.5)
-            ) + (FinalTarget.HumanoidRootPart.Velocity * (Player:GetNetworkPing() * 1.25))
-                - HumanoidRootPart.Position
-            ) / (Player:GetNetworkPing() * 2);
-
-            HumanoidRootPart.Velocity = NeededVelocity;
-            game:GetService('RunService').RenderStepped:Wait();
-            HumanoidRootPart.Velocity = OldVelocity;
-        end);
-    end,
-})
---]]
-
---[[
 local SM = Tabs.FightingKilling:AddLeftGroupbox('自调碰撞箱追踪')
 
 SM:AddLabel("<b><font color=\"rgb(0, 0, 255)\">[注意]</font></b> 每1局要开1次")
@@ -10483,34 +10052,55 @@ local AttackAnimations = {
 
 local SM = Tabs.FightingKilling:AddRightGroupbox('暴力','angry')
 
+-- 直接写成全局函数，不占 local 寄存器！
+getASurvivor = function(dist)
+    local c = localPlayer.Character
+    local h = c and c:FindFirstChild("HumanoidRootPart")
+    if not h then return end
+
+    local s = workspace:FindFirstChild("Players") and workspace.Players.FindFirstChild("Survivors")
+    if not s then return end
+
+    for _, v in ipairs(s:GetChildren()) do
+        local t = v:FindFirstChild("HumanoidRootPart")
+        if t and (h.Position - t.Position).Magnitude < dist then
+            return v
+        end
+    end
+end
+
 SM:AddToggle("SlashAura", { 
     Text = "攻击光环",
     Default = false,
     Callback = function()
-        task.spawn(function()
-            while Toggles.SlashAura.Value do
-                local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    if isKiller then
-                        local yh = getASurvivor(Options.SlashAuraRange.Value)
-                        if yh then
-                            killerAttack()
-                        end
-                    else
-                        if killerModel and killerModel:FindFirstChild("HumanoidRootPart") then
-                            local dist = (hrp.Position - killerModel.HumanoidRootPart.Position).magnitude
-                            if dist <= Options.SlashAuraRange.Value then
+        -- 把循环逻辑放到 loadstring 里，不占用主脚本寄存器
+        loadstring([[
+            task.spawn(function()
+                while Toggles.SlashAura.Value do
+                    local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        if isKiller then
+                            local yh = getASurvivor(Options.SlashAuraRange.Value)
+                            if yh then
                                 killerAttack()
+                            end
+                        else
+                            if killerModel and killerModel:FindFirstChild("HumanoidRootPart") then
+                                local dist = (hrp.Position - killerModel.HumanoidRootPart.Position).magnitude
+                                if dist <= Options.SlashAuraRange.Value then
+                                    killerAttack()
+                                end
                             end
                         end
                     end
+                    task.wait(0.1)
                 end
-                task.wait(0.1)
-            end
-        end)
+            end)
+        ]])()
     end
 })
 
+-- 攻击光环范围滑块（保持不变）
 SM:AddSlider("SlashAuraRange", {
     Text = "攻击光环范围",
     Default = 7,
@@ -10524,54 +10114,62 @@ SM:AddDivider()
 SM:AddToggle('KillAll', {
     Text = "自动攻击所有玩家",
     Callback = function(s)
-        if s and playingState == "Spectating" then
-            Library:Notify("LightStar-提示\n必须在一轮 窥视时无法使用此功能", 7)
+        -- 前置条件检查
+        if not s then return end -- 关闭时直接退出
+        if playingState == "Spectating" then
+            Library:Notify("LightStar-提示\n窥视时无法使用此功能", 7)
+            Toggles.KillAll:SetValue(false)
+            return
         end
-        if s and isSurvivor then
-            Library:Notify("LightStar-提示\n要使用此功能 您必须是杀手", 7)
+        if isSurvivor then
+            Library:Notify("LightStar-提示\n要使用此功能，您必须是杀手", 7)
+            Toggles.KillAll:SetValue(false)
+            return
         end
-        if not (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")) then Toggles.KillAll:SetValue(false) return end
-        for _, v in pairs(workspace.Players.Survivors:GetChildren()) do
-            if not (workspace:FindFirstChild("Map") and gameMap:FindFirstChild("Ingame") and gameMap:FindFirstChild("Ingame"):FindFirstChild("Map")) then
-                Toggles.KillAll:SetValue(false)
-                return
-            end
-            if playingState == "Spectating" then
-                Toggles.KillAll:SetValue(false)
-                return
-            end
-            local name = v:GetAttribute("Username")
-            local plr = game.Players:FindFirstChild(name)
-            if plr then
-                local skipTimeout = tick()
-                while tick() - skipTimeout <= Options.KillAllmew.Value do
-                    if game.Players:FindFirstChild(name) == nil then
-                        break 
-                    end
-                    if plr.Character == nil then
-                        break
-                    end
-                    if plr.Character:FindFirstChild("Humanoid") == nil then
-                        break
-                    end
-                    if plr.Character.Humanoid.Health <= 0 then
-                        break
-                    end
-                    if not Toggles.KillAll.Value then
-                        return
-                    end
+        if not (workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")) then
+            Library:Notify("LightStar-提示\n未找到幸存者容器", 5)
+            Toggles.KillAll:SetValue(false)
+            return
+        end
+        local gameMap = workspace:FindFirstChild("Map")
+        if not (gameMap and gameMap:FindFirstChild("Ingame") and gameMap.Ingame:FindFirstChild("Map")) then
+            Library:Notify("LightStar-提示\n对局游戏地图未加载", 5)
+            Toggles.KillAll:SetValue(false)
+            return
+        end
+
+        -- 攻击循环（使用 task.spawn 避免阻塞）
+        task.spawn(function()
+            while Toggles.KillAll.Value do
+                for _, v in pairs(workspace.Players.Survivors:GetChildren()) do
+                    if not Toggles.KillAll.Value then break end -- 响应关闭
+
+                    local name = v:GetAttribute("Username")
+                    local plr = game.Players:FindFirstChild(name)
+                    if not plr then continue end
+
+                    -- 安全检查角色和人形
+                    local char = plr.Character
+                    if not char then continue end
+                    local hum = char:FindFirstChild("Humanoid")
+                    if not hum or hum.Health <= 0 then continue end
+
+                    -- 执行攻击逻辑
                     enableNoclip()
-                    localPlayer.Character.HumanoidRootPart.CFrame = plr.Character.HumanoidRootPart.CFrame
-                    localPlayer.Character.HumanoidRootPart.Velocity = Vector3.zero
+                    if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        localPlayer.Character.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame
+                        localPlayer.Character.HumanoidRootPart.Velocity = Vector3.zero
+                    end
                     killerAttack()
-                    task.wait()
+                    task.wait(Options.KillAllTeleportTime.Value or 25) -- 使用配置的间隔，默认0.1秒
                 end
+                task.wait() -- 防止帧阻塞
             end
-        end
+        end)
     end
 })
 
-SM:AddSlider("KillAllmew", {
+SM:AddSlider("KillAllTeleportTime", {
     Text = "#秒传送另1个幸存者",
     Default = 25,
     Min = 5,
@@ -11221,8 +10819,110 @@ ZZ:AddToggle("RemoveBlindness", {
 
 local ZZ = Tabs.BanEffect:AddRightGroupbox('c00lkidd')
 
+--[
+getgenv().Players = game:GetService("Players")
+getgenv().RunService = game:GetService("RunService")
+getgenv().LocalPlayer = getgenv().Players.LocalPlayer
+getgenv().ReplicatedStorage = game:GetService("ReplicatedStorage")
+getgenv().buffer = buffer or require(getgenv().ReplicatedStorage.Buffer)
+getgenv().RemoteEvent = getgenv().ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
+
+if not getgenv().originalNamecall then
+   getgenv().HookRules = {}
+   getgenv().originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+       local method = getnamecallmethod()
+       local args = {...}
+       if method == "FireServer" then
+           for _, rule in ipairs(getgenv().HookRules) do
+               if (not rule.remoteName or self.Name == rule.remoteName) then
+                   if not rule.blockedFirstArg or args[1] == rule.blockedFirstArg then
+                       if rule.block then
+                           return
+                       end
+                   end
+               end
+           end
+       end
+       return getgenv().originalNamecall(self, ...)
+   end)
+end
+
+getgenv().activateRemoteHook = function(remoteName, blockedFirstArg)
+   for _, rule in ipairs(getgenv().HookRules) do
+       if rule.remoteName == remoteName and rule.blockedFirstArg == blockedFirstArg then
+           return
+       end
+   end
+   table.insert(getgenv().HookRules, {
+       remoteName = remoteName,
+       blockedFirstArg = blockedFirstArg,
+       block = true
+   })
+end
+
+getgenv().deactivateRemoteHook = function(remoteName, blockedFirstArg)
+   for i, rule in ipairs(getgenv().HookRules) do
+       if rule.remoteName == remoteName and rule.blockedFirstArg == blockedFirstArg then
+           table.remove(getgenv().HookRules, i)
+           break
+       end
+   end
+end
+
+getgenv().EnableC00lkidd = function()
+   getgenv().activateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "C00lkiddCollision")
+end
+
+getgenv().DisableC00lkidd = function()
+   getgenv().deactivateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "C00lkiddCollision")
+end
+
+local globalEnv = getgenv()
+globalEnv.walkSpeed = 100
+globalEnv.toggle = false
+globalEnv.connection = nil
+
+function globalEnv.getCharacter()
+   return globalEnv.LocalPlayer.Character or globalEnv.LocalPlayer.CharacterAdded:Wait()
+end
+
+function globalEnv.onHeartbeat()
+   local player = globalEnv.LocalPlayer
+   local character = globalEnv.getCharacter()
+   if character.Name ~= "c00lkidd" then return end
+   
+   local char = globalEnv.getCharacter()
+   local rootPart = char:FindFirstChild("HumanoidRootPart")
+   local humanoid = char:FindFirstChildOfClass("Humanoid")
+   local lv = rootPart and rootPart:FindFirstChild("LinearVelocity")
+   
+   if not rootPart or not humanoid or not lv then return end
+   
+   if lv then
+       lv.VectorVelocity = Vector3.new(math.huge, math.huge, math.huge)
+       lv.Enabled = false
+   end
+
+   local stopMovement = false
+   local validValues = {
+       Timeout = true,
+       Collide = true,
+       Hit = true
+   }
+
+   if not stopMovement then
+       local lookVector = workspace.CurrentCamera.CFrame.LookVector
+       local moveDir = Vector3.new(lookVector.X, 0, lookVector.Z)
+       if moveDir.Magnitude > 0 then
+           moveDir = moveDir.Unit
+           rootPart.Velocity = Vector3.new(moveDir.X * globalEnv.walkSpeed, rootPart.Velocity.Y, moveDir.Z * globalEnv.walkSpeed)
+           rootPart.CFrame = CFrame.new(rootPart.Position, rootPart.Position + moveDir)
+       end
+   end
+end
+
 ZZ:AddToggle("WalkspeedController", {
-    Text = "速度覆盖控制器",
+    Text = "速度覆盖控制器[大运出击]",
     Default = false,
     Callback = function(value)
         if value then
@@ -11248,7 +10948,7 @@ ZZ:AddToggle("IgnoreObjectables", {
 })
 
 ZZ:AddSlider("WalkSpeed", {
-    Text = "移动速度",
+    Text = "移动速度[大运速度]",
     Default = 100,
     Min = 16,
     Max = 200,
@@ -11257,6 +10957,7 @@ ZZ:AddSlider("WalkSpeed", {
         globalEnv.walkSpeed = Value
     end
 })
+--]]
 
 local ZZ = Tabs.BanEffect:AddRightGroupbox('其他反效果')
 
