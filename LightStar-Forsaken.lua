@@ -89,7 +89,7 @@ Library.ShowToggleFrameInKeybinds = true
 local Window = Library:CreateWindow({
 	Title = "LightStar",
 	Footer = "LightStar团队脚本-discord.gg/BW55cR7Z [来源Nolsaken]",
-	Icon = 95816097006870,
+	Icon = 17261823399,
 })
 --biohazard
 local Tabs = {
@@ -358,6 +358,63 @@ KillerSurvival:AddToggle("AlwaysSprint", {
 
 KillerSurvival:AddDivider()
 
+--[[
+KillerSurvival:AddSlider("TimeLocationValue",{
+    Text = "时间位置调节",
+    Min = -10, Max = 10,
+    Default = 1, 
+    Compact = true,
+    Rounding = 0.01,
+    Callback = function(v)
+_env.TimeLocationValue = v
+    end
+})
+
+_env.TimeLocationValue = 1
+
+KillerSurvival:AddToggle("EnableTimeLocation",{
+    Text = "启用时间位置",
+    Callback = function(v)
+        _env.TimeLocation = v
+        while _env.TimeLocation do
+local roundtime
+local positionSet = false 
+local function adjustPosition()
+    if roundtime and not positionSet then
+        roundtime.Position = UDim2.new(
+            roundtime.Position.X.Scale + Options.TimeLocation.Value,
+            roundtime.Position.X.Offset,
+            roundtime.Position.Y.Scale,
+            roundtime.Position.Y.Offset
+        )
+        positionSet = true 
+    end
+end
+
+task.spawn(function()
+    while not roundtime do
+        roundtime = player:FindFirstChild("PlayerGui")
+            and player.PlayerGui:FindFirstChild("RoundTimer")
+            and player.PlayerGui.RoundTimer:FindFirstChild("Main")
+        task.wait(0.1)
+    end
+    
+    adjustPosition()
+    while roundtime do
+        roundtime.Position = UDim2.new(
+            roundtime.Position.X.Scale,
+            roundtime.Position.X.Offset,
+            roundtime.Position.Y.Scale,
+            roundtime.Position.Y.Offset
+        )
+        task.wait(0.5) 
+         end
+     end)
+   end
+end
+})
+--]]
+
 KillerSurvival:AddSlider("SpeedBoostValue",{
     Text = "速度调节",
     Min = 0, Max = 3,
@@ -387,10 +444,8 @@ KillerSurvival:AddToggle('AllowJump', {
     Text = '启用跳跃',
     Default = false,
     Callback = function(value)
-        restoringJump = value
-        
+        restoringJump = value        
       Library:Notify("LightStar-警告", "反复跳跃会踢你 因为游戏会认为你正在飞行！", 9)
-
         if value then
             task.spawn(function()
                 while restoringJump do
@@ -10114,15 +10169,17 @@ SM:AddDivider()
 SM:AddToggle('KillAll', {
     Text = "自动攻击所有玩家",
     Callback = function(s)
-        -- 前置条件检查
-        if not s then return end -- 关闭时直接退出
+        -- 关闭时直接退出，无残留逻辑
+        if not s then return end
+
+        -- 前置条件检查（仅执行1次，确保环境有效）
         if playingState == "Spectating" then
-            Library:Notify("LightStar-提示\n窥视时无法使用此功能", 7)
+            Library:Notify("LightStar-提示\n窥视时无法使用此功能", 3)
             Toggles.KillAll:SetValue(false)
             return
         end
         if isSurvivor then
-            Library:Notify("LightStar-提示\n要使用此功能，您必须是杀手", 7)
+            Library:Notify("LightStar-提示\n要使用此功能 您必须是杀手", 4)
             Toggles.KillAll:SetValue(false)
             return
         end
@@ -10137,33 +10194,69 @@ SM:AddToggle('KillAll', {
             Toggles.KillAll:SetValue(false)
             return
         end
+        -- 校验本地玩家角色是否加载（防空引用）
+        if not (localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")) then
+            Library:Notify("LightStar-提示\n本地角色未加载完成", 5)
+            Toggles.KillAll:SetValue(false)
+            return
+        end
 
-        -- 攻击循环（使用 task.spawn 避免阻塞）
+        -- 缓存本地玩家根部件（避免重复查找）
+        local localHRP = localPlayer.Character.HumanoidRootPart
+        
+        -- 独立协程执行，避免阻塞UI
         task.spawn(function()
             while Toggles.KillAll.Value do
+                -- 遍历所有幸存者（定义变量v，解决未定义错误）
                 for _, v in pairs(workspace.Players.Survivors:GetChildren()) do
-                    if not Toggles.KillAll.Value then break end -- 响应关闭
+                    if not Toggles.KillAll.Value then return end -- 开关关闭，立即退出
 
+                    -- 获取幸存者绑定的玩家对象
                     local name = v:GetAttribute("Username")
                     local plr = game.Players:FindFirstChild(name)
-                    if not plr then continue end
+                    if not plr then continue end -- 未找到玩家，跳过
 
-                    -- 安全检查角色和人形
-                    local char = plr.Character
-                    if not char then continue end
-                    local hum = char:FindFirstChild("Humanoid")
-                    if not hum or hum.Health <= 0 then continue end
+                    -- 目标幸存者状态校验
+                    local surChar = plr.Character
+                    if not surChar then continue end
+                    local surHum = surChar:FindFirstChild("Humanoid")
+                    if not surHum or surHum.Health <= 0 then continue end
+                    local surHRP = surChar:FindFirstChild("HumanoidRootPart")
+                    if not surHRP then continue end
 
-                    -- 执行攻击逻辑
-                    enableNoclip()
-                    if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        localPlayer.Character.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame
-                        localPlayer.Character.HumanoidRootPart.Velocity = Vector3.zero
+                    -- 核心攻击循环：按滑块间隔持续追击当前目标
+                    local skipTimeout = tick()
+                    -- 修复：移除多余的end，循环体正确包裹逻辑
+                    while tick() - skipTimeout <= Options.KillAllTeleportTime.Value do
+                        -- 退出条件1：目标玩家已离开游戏
+                        if game.Players:FindFirstChild(name) == nil then
+                            break
+                        end
+                        -- 退出条件2：目标玩家角色异常/死亡
+                        if not surChar or not surHum or surHum.Health <= 0 or not surHRP then
+                            break
+                        end
+                        -- 退出条件3：功能开关已关闭
+                        if not Toggles.KillAll.Value then
+                            return
+                        end
+
+                        -- 执行传送+攻击
+                        enableNoclip()
+                        localHRP.CFrame = surHRP.CFrame + Vector3.new(0, 1, 0) -- 防穿模
+                        localHRP.Velocity = Vector3.zero -- 清空速度
+                        killerAttack()
+
+                        task.wait() -- 帧延迟，避免阻塞
                     end
-                    killerAttack()
-                    task.wait(Options.KillAllTeleportTime.Value or 25) -- 使用配置的间隔，默认0.1秒
                 end
-                task.wait() -- 防止帧阻塞
+                -- 一轮遍历完，短暂停顿再循环
+                task.wait(1)
+            end
+
+            -- 开关关闭后，关闭穿墙（避免残留）
+            if _G.noclipEnabled then
+                disableNoclip()
             end
         end)
     end
@@ -10179,7 +10272,6 @@ SM:AddSlider("KillAllTeleportTime", {
 
 local Disabled = Tabs.BanEffect:AddLeftGroupbox("约翰 多反效果")
 
--- Helper function to safely destroy objects
 local function safeDestroy(obj)
     if obj and obj.Parent then
         obj:Destroy()
@@ -10868,14 +10960,6 @@ end
 
 local ZZ = Tabs.BanEffect:AddRightGroupbox('c00lkidd')
 
-getgenv().EnableC00lkidd = function()
-   getgenv().activateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "C00lkiddCollision")
-end
-
-getgenv().DisableC00lkidd = function()
-   getgenv().deactivateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "C00lkiddCollision")
-end
-
 local globalEnv = getgenv()
 globalEnv.walkSpeed = 100
 globalEnv.toggle = false
@@ -10920,7 +11004,7 @@ function globalEnv.onHeartbeat()
    end
 end
 
-ZZ:AddToggle("WalkspeedController", {
+ZZ:AddToggle("c00lkiddSpurtspeedController", {
     Text = "速度覆盖控制器[大运出击]",
     Default = false,
     Callback = function(value)
@@ -10934,7 +11018,7 @@ ZZ:AddToggle("WalkspeedController", {
     end
 })
 
-ZZ:AddSlider("WalkSpeed", {
+ZZ:AddSlider("c00lkiddSpurtSpeed", {
     Text = "移动速度[大运速度]",
     Default = 100,
     Min = 16,
@@ -10945,14 +11029,14 @@ ZZ:AddSlider("WalkSpeed", {
     end
 })
 
-ZZ:AddToggle("IgnoreObjectables", {
+ZZ:AddToggle("c00lkiddIgnoreObjectables", {
     Text = "无视障碍物",
     Default = false,
     Callback = function(Value)
         if Value then
-            getgenv().EnableC00lkidd()
+   getgenv().activateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "C00lkiddCollision")
         else
-            getgenv().DisableC00lkidd()
+   getgenv().deactivateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "C00lkiddCollision")
         end
     end
 })
@@ -10988,8 +11072,13 @@ ZZ:AddToggle("AntiHealthGlitch", {
 
 getgenv().isFiringDusekkar = false
 
-getgenv().EnableProtection = function()
-   getgenv().activateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "DusekkarCancel")
+ZZ:AddToggle("ProtectionDusekkar", {
+   Text = "反Dusekkar取消保护",
+   Default = false,
+   Tooltip = "防止护盾被取消",
+   Callback = function(Value)
+       if Value then
+           getgenv().activateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "DusekkarCancel")
    if not getgenv().isFiringDusekkar then
        getgenv().isFiringDusekkar = true
        task.spawn(function()
@@ -11000,21 +11089,8 @@ getgenv().EnableProtection = function()
            getgenv().isFiringDusekkar = false
        end)
    end
-end
-
-getgenv().DisableProtection = function()
-   getgenv().deactivateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "DusekkarCancel")
-end
-
-ZZ:AddToggle("ProtectionDusekkar", {
-   Text = "反Dusekkar取消保护",
-   Default = false,
-   Tooltip = "防止护盾被取消",
-   Callback = function(Value)
-       if Value then
-           getgenv().EnableProtection()
        else
-           getgenv().DisableProtection()
+           getgenv().deactivateRemoteHook("RemoteEvent", game.Players.LocalPlayer.Name .. "DusekkarCancel")
        end
    end
 })
@@ -11905,7 +11981,7 @@ MVP:AddSlider('MySlider1', {
     Text = '体力大小',
     Default = 100,
     Min = 0,
-    Max = 99999,
+    Max = 2000,
     Rounding = 0,
     Callback = function(Value)
         StaminaSettings.MaxStamina = Value
@@ -12148,72 +12224,67 @@ Generator:AddButton({
 
 Generator:AddDivider()
 
--- 第1种：逐个修完所有发电机，修完一台再修下一台
+-- 第1种：逐个修理发电机，直到单台修满再换下一台，循环直到全部修完
 Generator:AddToggle("AutoGeneratorTeleportFix1", {
     Text = "自动轮换修理发动机[第1种]",
     Default = false,
     Callback = function(enabled)
-        -- 生成唯一线程ID，用于判断是否继续执行
+        -- 生成随机线程ID，用于安全关闭，防止多开冲突
         local threadId = tostring(math.random(1, 99999))
         _G.AutoFixThreadId = threadId
-        
-        -- 判断当前线程是否应该继续执行
+
+        -- 判断函数：当前功能是否应该继续运行
         local function shouldContinue()
             return _G.AutoFixThreadId == threadId and enabled
         end
-        
-        -- 检查是否所有发电机都已修完
+
+        -- 判断函数：所有发电机是否都已修完
         local function allGeneratorsFixed()
             for _, v in ipairs(game.Workspace.Map.Ingame.Map:GetChildren()) do
-                if v.Name == "Generator" and v.Progress.Value < 100 then
-                    return false
+                -- 检查是否为发电机且进度未满100
+                if v.Name == "Generator" and v:FindFirstChild("Progress") and v.Progress.Value < 100 then
+                    return false -- 还有未修完的发电机
                 end
             end
-            return true
+            return true -- 全部发电机已修完
         end
-        
-        -- 主循环：逐个修理发电机
+
+        -- 主逻辑：逐个修理发电机
         local function runGenerator()
+            -- 只要功能开启且未修完，就一直循环
             while shouldContinue() and not allGeneratorsFixed() do
-                -- 收集所有未修完的发电机
+                -- 收集所有【未修满】的发电机
                 local generators = {}
                 for i, v in ipairs(game.Workspace.Map.Ingame.Map:GetChildren()) do
-                    if v.Name == "Generator" and v.Progress.Value < 100 then
+                    if v.Name == "Generator" and v:FindFirstChild("Progress") and v.Progress.Value < 100 then
                         table.insert(generators, v)
                     end
                 end
-                
-                -- 遍历每个发电机进行修理
+
+                -- 遍历每一台发电机，逐个修理
                 for _, generator in ipairs(generators) do
-                    if not shouldContinue() or allGeneratorsFixed() then
-                        return
-                    end
-                    
-                    -- 如果发电机已修完，跳过
-                    if generator.Progress.Value >= 100 then
-                        continue
-                    end
-                    
-                    -- 检查可用位置，避免与其他玩家重叠
-                    local availablePositions = {
-                        Left = true,
-                        Right = true,
-                        Center = true
-                    }
-                    
+                    -- 如果关闭功能或全部修完，直接退出
+                    if not shouldContinue() or allGeneratorsFixed() then return end
+                    -- 这台已经修完，跳过
+                    if generator.Progress.Value >= 100 then continue end
+
+                    -- 记录发电机三个位置：左/右/中 是否有人
+                    local availablePositions = { Left = true, Right = true, Center = true }
+
                     for _, player in ipairs(game.Players:GetPlayers()) do
                         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                             local hrp = player.Character.HumanoidRootPart
+                            -- 检查发电机的每个交互点
                             for _, pos in ipairs(generator.Positions:GetChildren()) do
-                                local posName = pos.Name
-                                if (hrp.Position - pos.Position).Magnitude < 5 then
-                                    availablePositions[posName] = false
+                                -- 距离小于4，视为有人占用该位置
+                                if (hrp.Position - pos.Position).Magnitude < 4 then
+                                    availablePositions[pos.Name] = false
                                 end
                             end
                         end
                     end
-                    
-                    -- 选择第一个可用位置
+
+                    -- 选择第一个可用的空位
                     local positionToUse
                     for posName, isAvailable in pairs(availablePositions) do
                         if isAvailable then
@@ -12221,78 +12292,94 @@ Generator:AddToggle("AutoGeneratorTeleportFix1", {
                             break
                         end
                     end
-                    
-                    -- 如果有可用位置，开始传送和修理
-                    if positionToUse and shouldContinue() and not allGeneratorsFixed() then
+
+                    -- 找到空位，开始传送修理
+                    if positionToUse and shouldContinue() then
                         local char = game.Players.LocalPlayer.Character
+                        -- 角色不存在，等待1秒再继续
                         if not char or not char.PrimaryPart then
                             task.wait(1)
                             continue
                         end
                         
-                        -- 传送至发电机位置（安全防踢数值）
-                        char.PrimaryPart.CFrame = generator.Positions[positionToUse].CFrame
-                        task.wait(0.25)
-                        
-                        -- 尝试进入发电机
+                        -- 传送过去（轻微抬高，防卡地面、防检测）
+                        local targetPos = generator.Positions[positionToUse].CFrame
+                        char.PrimaryPart.CFrame = targetPos * CFrame.new(0, 0.5, 0)
+                        task.wait(0.58) -- 传送后稳定延迟
+
+                        -- 尝试进入修机交互
                         local entered = false
                         pcall(function()
                             generator.Remotes.RF:InvokeServer("Enter")
                             entered = true
                         end)
-                        
-                        if not entered then
-                            warn("无法进入发动机，跳过...")
-                            continue
-                        end
-                        
-                        -- 进入后等待（安全防踢数值）
-                        task.wait(0.35)
-                        
-                        -- 循环修理，直到发电机修完（最快安全速度）
+                        if not entered then continue end -- 进不去就跳过这台
+
+                        task.wait(0.93) -- 进入后的真人延迟
+
+                        -- 循环修机，直到这台修好
                         while shouldContinue() and generator.Progress.Value < 100 do
-                            local repaired = pcall(function()
-                                generator.Remotes.RE:FireServer()
+                            pcall(function()
+                                generator.Remotes.RE:FireServer() -- 发送修机进度包
                             end)
-                            if not repaired then
-                                warn("修复失败，重新进入......")
-                                pcall(function()
-                                    generator.Remotes.RF:InvokeServer("Enter")
-                                end)
-                                task.wait(0.35)
-                            end
-                            -- 修机间隔：最快且安全的数值
-                            task.wait(1.2)
+                            -- 随机延迟 1.6~2.2 秒，防固定频率检测
+                            local waitTime = Random.new():NextNumber(1.6, 2.2)
+                            task.wait(waitTime)
                         end
-                        
-                        -- 离开发电机
+
+                        -- 修完，离开发电机
                         pcall(function()
                             generator.Remotes.RF:InvokeServer("Leave")
                         end)
+
+                        task.wait(1.34) -- 修完一台后的停顿，更像真人
                     end
                 end
-                
-                -- 一轮结束后等待（安全防踢数值）
+
+                -- 一轮遍历完准备换下一轮发电机前，强制退出当前可能未退出的发电机（新增逻辑）
+                pcall(function()
+                    -- 遍历所有发电机，检测是否还处于进入状态，若有则强制退出
+                    for _, v in ipairs(game.Workspace.Map.Ingame.Map:GetChildren()) do
+                        if v.Name == "Generator" then
+                            v.Remotes.RF:InvokeServer("Leave")
+                        end
+                    end
+                end)
+                -- 一轮遍历完，休息一下再继续
                 if shouldContinue() and not allGeneratorsFixed() then
-                    task.wait(1.2)
+                    task.wait(2)
                 end
+            end
+
+            -- 全部发电机修完提示
+            if allGeneratorsFixed() then
+                Library:Notify("LightStar-提示\n全部发动机已修理完成", 3)
+                Toggles.AutoGeneratorTeleportFix1:SetValue(false)
             end
         end
 
-        -- 启用时启动线程
+        -- 开启功能：启动新线程
         if enabled then
             if _G.AutoFixThread then
-                _G.AutoFixThreadId = tostring(math.random(1, 99999))
-                task.cancel(_G.AutoFixThread)
+                _G.AutoFixThreadId = tostring(math.random(1,99999))
+                task.cancel(_G.AutoFixThread) -- 关掉旧线程
             end
             _G.AutoFixThread = task.spawn(runGenerator)
         else
-            -- 禁用时停止线程
-            _G.AutoFixThreadId = tostring(math.random(1, 99999))
+            -- 关闭功能：停止线程
+            _G.AutoFixThreadId = tostring(math.random(1,99999))
             if _G.AutoFixThread then
                 task.cancel(_G.AutoFixThread)
                 _G.AutoFixThread = nil
             end
+            -- 关闭功能时，强制退出所有发电机（新增兜底）
+            pcall(function()
+                for _, v in ipairs(game.Workspace.Map.Ingame.Map:GetChildren()) do
+                    if v.Name == "Generator" then
+                        v.Remotes.RF:InvokeServer("Leave")
+                    end
+                end
+            end)
         end
     end
 })
@@ -12302,27 +12389,24 @@ Generator:AddToggle("AutoGeneratorTeleportFix2", {
     Text = "自动轮换修理发动机[第2种]",
     Default = false,
     Callback = function(enabled)
-        -- 生成唯一线程ID，用于判断是否继续执行
+        -- 生成随机线程ID，用于安全关闭，防止多开冲突
         local threadId = tostring(math.random(1,99999))
         _G.AutoFixThreadId = threadId
 
-        -- 当前索引，用于按顺序轮询发电机
+        -- 轮询发电机的序号，从第1台开始
         local index = 1
 
-        -- 判断当前线程是否应该继续执行
+        -- 判断函数：当前功能是否应该继续运行
         local function shouldContinue()
             return _G.AutoFixThreadId == threadId and enabled
         end
 
+        -- 当开关开启时
         if enabled then
-            if _G.AutoFixThread then
-                task.cancel(_G.AutoFixThread)
-            end
-
-            -- 启动主循环
-            _G.AutoFixThread = task.spawn(function()
+            -- 开启独立协程，不卡主界面
+            task.spawn(function()
                 while shouldContinue() do
-                    -- 收集所有未修完的发电机
+                    -- 收集地图中所有【未修满】的发电机
                     local gens = {}
                     for _, v in ipairs(workspace.Map.Ingame.Map:GetChildren()) do
                         if v.Name == "Generator" and v:FindFirstChild("Progress") and v.Progress.Value < 100 then
@@ -12330,20 +12414,21 @@ Generator:AddToggle("AutoGeneratorTeleportFix2", {
                         end
                     end
 
-                    -- 如果没有可修的发电机，等待后继续
+                    -- 如果没有可修理的发电机
                     if #gens == 0 then
-                        task.wait(1)
-                        continue
+                        Library:Notify("LightStar-提示\n全部发动机已修理完成", 3)
+                        Toggles.AutoGeneratorTeleportFix2:SetValue(false)
+                        break
                     end
 
-                    -- 按顺序取下一台发电机，循环轮询
+                    -- 轮询逻辑：序号超过总数则重置为1，实现循环
                     if index > #gens then
                         index = 1
                     end
                     local gen = gens[index]
                     index = index + 1
 
-                    -- 获取发电机的位置
+                    -- 获取发电机的交互点位
                     local pos = nil
                     if gen and gen:FindFirstChild("Positions") then
                         local pts = gen.Positions:GetChildren()
@@ -12352,51 +12437,56 @@ Generator:AddToggle("AutoGeneratorTeleportFix2", {
                         end
                     end
 
-                    -- 获取本地玩家的角色和根部件
+                    -- 获取本地玩家角色和根节点
                     local char = game.Players.LocalPlayer.Character
                     local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-                    -- 如果有位置和根部件，开始传送和修理
+                    -- 所有条件满足才执行传送+修机
                     if pos and hrp and gen then
-                        -- 传送前先关闭当前发电机（如果在里面），避免状态冲突
-                        pcall(function()
-                            gen.Remotes.RF:InvokeServer("Leave")
-                        end)
-                        task.wait(0.1)
-                        
-                        -- 传送至发电机位置（安全防踢数值）
-                        hrp.CFrame = pos.CFrame
-                        task.wait(0.25)
+                    
+                    -- 准备传送下一台发电机前，强制退出当前正在修理的发电机（新增核心逻辑）
+                    pcall(function()
+                        gen.Remotes.RF:InvokeServer("Leave")
+                    end)
+                    task.wait(0.1) -- 退出后短暂延迟，防止服务器同步冲突
 
-                        -- 进入发电机（安全防踢数值）
+                        -- 超快瞬移
+                        hrp.CFrame = pos.CFrame * CFrame.new(0, 0.2, 0)
+                        task.wait(0.2)
+
+                        -- 进入修机
                         pcall(function()
                             gen.Remotes.RF:InvokeServer("Enter")
                         end)
-                        task.wait(0.35)
+                        task.wait(0.6)
 
-                        -- 修一下（最快安全速度）
+                        -- 触发修理
                         pcall(function()
                             gen.Remotes.RE:FireServer()
                         end)
-                        task.wait(0.25)
 
-                        -- 离开发电机
+                        -- 正常修理节奏
+                        local repairWait = Random.new():NextNumber(0.5, 0.7)
+                        task.wait(repairWait)
+
+                        -- 修理完成离开
                         pcall(function()
                             gen.Remotes.RF:InvokeServer("Leave")
                         end)
                     end
-
-                    -- 轮询间隔（最快安全数值）
-                    task.wait(1.5)
                 end
             end)
         else
-            -- 禁用时停止线程
-            if _G.AutoFixThread then
-                task.cancel(_G.AutoFixThread)
-                _G.AutoFixThread = nil
-            end
+            -- 关闭功能：更换线程ID，让循环安全退出
             _G.AutoFixThreadId = tostring(math.random(1,99999))
+            -- 关闭功能时，强制退出所有发电机（新增兜底逻辑）
+            pcall(function()
+                for _, v in ipairs(workspace.Map.Ingame.Map:GetChildren()) do
+                    if v.Name == "Generator" then
+                        v.Remotes.RF:InvokeServer("Leave")
+                    end
+                end
+            end)
         end
     end
 })
