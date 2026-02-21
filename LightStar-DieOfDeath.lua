@@ -75,17 +75,13 @@ local Tabs = {
     new = Window:AddTab('主持','external-link','公告&信息'),
     Main = Window:AddTab('玩家','user','这是主要的!!!'),
     Esp = Window:AddTab('ESP','scan-eye','让你能够透视他们!!!'),
-    --[[
-    BanEffect = Window:AddTab('反效果','cpu','让你无法受到效果!!!'),
-    --]]
-   --[[
-    PhysicalStrength = Window:AddTab('体力','zap','让你奔跑体力最大!!!'),
-    --]]
+    --BanEffect = Window:AddTab('反效果','cpu','让你无法受到效果!!!'),
+    --PhysicalStrength = Window:AddTab('体力','zap','让你奔跑体力最大!!!'),
     Settings = Window:AddTab("设置","settings",'设置&调试'),
-    Addons = Window:AddTab("插件","boxes",'这是功能添加!!!'),
+    --Addons = Window:AddTab("插件","boxes",'这是功能添加!!!'),
 }
 
-Addons = Tabs.Addons:AddLeftGroupbox('插件&附加','blocks')
+--Addons = Tabs.Addons:AddLeftGroupbox('插件&附加','blocks')
 
 local _env = getgenv and getgenv() or {}
 local _hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
@@ -250,11 +246,11 @@ Update:UpdateWarningBox({
     LockSize = true,
 })
 
-local information = Tabs.new:AddLeftGroupbox('信息','info')
+local profile = Tabs.new:AddLeftGroupbox('个人资料','info')
 
     local Players = game:GetService('Players')
     local player = Players.LocalPlayer
-    local avatarImage = information:AddImage('AvatarThumbnail', {
+    local avatarImage = profile:AddImage('AvatarThumbnail', {
         Image = 'rbxassetid://0',
         Callback = function(image)
             print('Image changed!', image)
@@ -295,25 +291,22 @@ local information = Tabs.new:AddLeftGroupbox('信息','info')
         end
     end)
     
-information:AddDivider()
+profile:AddLabel("Good 嘿起来！"..game.Players.LocalPlayer.Name..".")
+profile:AddLabel("Solo1...")
+profile:AddLabel("支持是我们的最大的贡献😜")
 
-information:AddLabel("欢迎用户"..game.Players.LocalPlayer.DisplayName.." ("..game.Players.LocalPlayer.Name..")")
-information:AddLabel("支持是我们的最大的贡献😜")
+profile:AddDivider()
 
-information:AddDivider()
+profile:AddLabel("注入器 : " ..identifyexecutor())
 
-information:AddLabel("执行器 : " ..identifyexecutor())
 --[[
-
 local information = Tabs.new:AddRightGroupbox('信息','info')
 
-information:AddLabel("Hello亲爱的使用LightStar者")
-information:AddLabel("这个服务器脚本停更")
-information:AddLabel("我不是跑路了")
-information:AddLabel("我的账号已封禁")
-information:AddLabel("我正在制作其他新的服务器脚本")
-information:AddLabel("谢谢你的观看！！！")
+information:AddLabel("Welcome来到<b><font color=\"rgb(0, 255, 0)\">LightStar</font></b> 玩的高兴")
 
+information:AddDivider()
+
+information:AddLabel("🟢 脚本已更新")
 --]]
 
 local Contributor = Tabs.new:AddRightGroupbox('鸣谢&贡献者','handshake')
@@ -3256,6 +3249,7 @@ MenuGroup:AddButton("摧毁界面", function()
     Library:Unload()  
 end)
 
+--[[
 local AddonsWarningText = "小心!您放入(LightStar/Addons)目录的任何脚本都会被执行器执行 我们建议您仅使用来自可信来源或开源的插件 对于播件造成的任何损害 我们概不负责 特此警告!"
 
 local AddonsWarning = Tabs.Addons
@@ -3343,6 +3337,7 @@ for _, file in ipairs(listfiles(addonFolder)) do
         
     end
 end
+--]]
 
 function CreateFolder(f)
 if not isfolder(f) then makefolder(f) repeat task.wait() until isfolder(f) end

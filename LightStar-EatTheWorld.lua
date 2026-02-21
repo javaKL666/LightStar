@@ -92,10 +92,10 @@ local Tabs = {
     new = Window:AddTab('主持','external-link','公告&信息'),
     Main = Window:AddTab('吃掉','house','这是主要功能的!!!'),
     Settings = Window:AddTab("设置","settings",'设置&调试'),
-    Addons = Window:AddTab("插件","boxes",'这是功能添加!!!'),
+    --Addons = Window:AddTab("插件","boxes",'这是功能添加!!!'),
 }
 
-Addons = Tabs.Addons:AddLeftGroupbox('插件&附加','blocks')
+--Addons = Tabs.Addons:AddLeftGroupbox('插件&附加','blocks')
 
 --[[
 local new = Tabs.new:AddLeftGroupbox('新闻','rocket')
@@ -130,11 +130,11 @@ Update:UpdateWarningBox({
     LockSize = true,
 })
 
-local information = Tabs.new:AddLeftGroupbox('信息','info')
+local profile = Tabs.new:AddLeftGroupbox('个人资料','info')
 
     local Players = game:GetService('Players')
     local player = Players.LocalPlayer
-    local avatarImage = information:AddImage('AvatarThumbnail', {
+    local avatarImage = profile:AddImage('AvatarThumbnail', {
         Image = 'rbxassetid://0',
         Callback = function(image)
             print('Image changed!', image)
@@ -175,14 +175,23 @@ local information = Tabs.new:AddLeftGroupbox('信息','info')
         end
     end)
     
+profile:AddLabel("Good 嘿起来！"..game.Players.LocalPlayer.Name..".")
+profile:AddLabel("Solo1...")
+profile:AddLabel("支持是我们的最大的贡献😜")
+
+profile:AddDivider()
+
+profile:AddLabel("注入器 : " ..identifyexecutor())
+
+--[[
+local information = Tabs.new:AddRightGroupbox('信息','info')
+
+information:AddLabel("Welcome来到<b><font color=\"rgb(0, 255, 0)\">LightStar</font></b> 玩的高兴")
+
 information:AddDivider()
 
-information:AddLabel("欢迎用户"..game.Players.LocalPlayer.DisplayName.." ("..game.Players.LocalPlayer.Name..")")
-information:AddLabel("支持是我们的最大的贡献😜")
-
-information:AddDivider()
-
-information:AddLabel("执行器 : " ..identifyexecutor())
+information:AddLabel("🟢 脚本已更新")
+--]]
 
 local Contributor = Tabs.new:AddRightGroupbox('鸣谢&贡献者','handshake')
 
@@ -525,20 +534,297 @@ world:AddToggle("RemoveMap", {
  main.RemoveMap = Value
 if Value then
 startLoop("RemoveMap", function()
-pcall(function() 
-workspace.Map.Buildings:Destroy() 
-end)
-pcall(function() 
-workspace.Map.Fragmentable:Destroy() 
-end)
-pcall(function() 
+pcall(function()
+workspace.Map.Buildings:Destroy()
+workspace.Map.Fragmentable:Destroy()
 workspace.Chunks:Destroy() 
 end)
 end, 1)
 else
-stopLoop("RemoveMap")
-end
+showMap = Value
   end
+end
+})
+
+-- 安全获取 LocalPlayer
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+
+world:AddToggle("AutoFarm", {
+    Text = "自动农场",
+    Default = false,
+    Callback = function(enabled)
+        autofarm = enabled
+        
+        if not autofarm then
+            return
+        end
+
+        coroutine.wrap(function()
+            -- 先补全缺失的函数定义，避免报错
+            local function sizeGrowth(maxSize)
+                -- 假设 sizeGrowth 是计算大小增长的函数，这里给一个合理的默认实现
+                return maxSize * 100 -- 可根据实际游戏逻辑修改
+            end
+
+            local function changeMap()
+                -- 切换地图/区块的核心逻辑，这里是一个空实现，你可以根据游戏实际情况补充
+                -- 例如：重新生成区块、重置位置、重新开始循环等
+                print("切换地图/区块")
+            end
+
+            local text = Drawing.new("Text")
+            text.Outline = true
+            text.OutlineColor = Color3.new(0, 0, 0)
+            text.Color = Color3.new(1, 1, 1)
+            text.Center = false
+            text.Position = Vector2.new(64, 64)
+            text.Text = ""
+            text.Size = 14
+            text.Visible = true
+            
+            local startTime = tick()
+            local eatTime = 0
+            local lastEatTime = tick()
+            
+            local timer = 0
+            local grabTimer = 0
+            local sellDebounce = false
+            local sellCount = 0
+            
+            local bedrock = Instance.new("Part")
+            bedrock.Anchored = true
+            bedrock.Size = Vector3.new(2048, 10, 2048)
+            bedrock.Position = Vector3.new(0, -5, 0)
+            -- bedrock.Transparency = 1
+            bedrock.BrickColor = BrickColor.Black()
+            bedrock.Parent = workspace
+
+            local map, chunks = workspace:FindFirstChild("Map"), workspace:FindFirstChild("Chunks")
+            if map and chunks then
+                map.Parent, chunks.Parent = nil, nil
+            end
+
+            local numChunks = 0
+            
+            local hum,
+                root,
+                size,
+                events,
+                eat,
+                grab,
+                sell,
+                sendTrack,
+                chunk,
+                radius,
+                autoConn,
+                sizeConn,
+                charAddConn
+            
+            local function onCharAdd(char)
+                numChunks = 0
+                
+                hum = char:WaitForChild("Humanoid")
+                root = char:WaitForChild("HumanoidRootPart")
+                size = char:WaitForChild("Size")
+                events = char:WaitForChild("Events")
+                eat = events:WaitForChild("Eat")
+                grab = events:WaitForChild("Grab")
+                sell = events:WaitForChild("Sell")
+                chunk = char:WaitForChild("CurrentChunk")
+                sendTrack = char:WaitForChild("SendTrack")
+                radius = char:WaitForChild("Radius")
+                
+                -- 断开旧连接，避免重复连接
+                if autoConn then
+                    autoConn:Disconnect()
+                end
+                autoConn = game["Run Service"].Heartbeat:Connect(function(dt)
+                    if not autofarm then
+                        autoConn:Disconnect()
+                        return
+                    end
+                    
+                    -- 空值检查，防止角色消失后报错
+                    if not hum or not root or not size or not eat or not grab or not sell or not sendTrack or not chunk or not radius then
+                        return
+                    end
+                    
+                    local ran = tick() - startTime
+                    local hours = math.floor(ran / 60 / 60)
+                    local minutes = math.floor(ran / 60)
+                    local seconds = math.floor(ran)
+                    
+                    local eatMinutes = math.floor(eatTime / 60)
+                    local eatSeconds = math.floor(eatTime)
+                    
+                    local y = bedrock.Position.Y + bedrock.Size.Y / 2 + hum.HipHeight + root.Size.Y / 2
+
+                    -- 空值检查，防止升级模块不存在报错
+                    local maxSizeUpgrade = LocalPlayer.Upgrades and LocalPlayer.Upgrades.MaxSize and LocalPlayer.Upgrades.MaxSize.Value or 100
+                    local multiplierUpgrade = LocalPlayer.Upgrades and LocalPlayer.Upgrades.Multiplier and LocalPlayer.Upgrades.Multiplier.Value or 1
+                    local sizeAdd = multiplierUpgrade / 100
+                    local addAmount = maxSizeUpgrade / sizeAdd
+                    
+                    local sellTime = addAmount / 2
+                    local sellMinutes = math.floor(sellTime / 60)
+                    local sellSeconds = math.floor(sellTime)
+                    
+                    local secondEarn = math.floor(sizeGrowth(maxSizeUpgrade) / sellTime)
+                    local minuteEarn = secondEarn * 60
+                    local hourEarn = minuteEarn * 60
+                    local dayEarn = hourEarn * 24
+                    
+                    text.Text = ""
+                        .. "\n运行时间: " .. string.format("%ih%im%is", hours, minutes % 60, seconds % 60)
+                        .. "\n实际时间: " .. string.format("%im%is", eatMinutes % 60, eatSeconds % 60)
+                        .. "\n大约吃完: " .. string.format("%im%is", sellMinutes % 60, sellSeconds % 60)
+                        .. "\n吃掉方块: " .. numChunks
+                    
+                    hum:ChangeState(Enum.HumanoidStateType.Physics)
+                    grab:FireServer()
+                    root.Anchored = false
+                    eat:FireServer()
+                    sendTrack:FireServer()
+                    
+                    if chunk.Value then
+                        if timer > 0 then
+                            numChunks += 1
+                        end
+                        timer = 0
+                        grabTimer += dt
+                    else
+                        timer += dt
+                        grabTimer = 0
+                    end
+                    
+                    if timer > 60 then
+                        hum.Health = 0
+                        timer = 0
+                        numChunks = 0
+                    end
+                    
+                    if grabTimer > 15 then
+                        size.Value = maxSizeUpgrade
+                    end
+                    
+                    if (size.Value >= maxSizeUpgrade) or timer > 8 then
+                        if timer < 8 then
+                            sell:FireServer()
+                            
+                            if not sellDebounce then
+                                changeMap()
+                            end
+                            
+                            sellDebounce = true
+                        else
+                            changeMap()
+                        end
+                        numChunks = 0
+                    elseif size.Value == 0 then
+                        if sellDebounce then
+                            local currentEatTime = tick()
+                            eatTime = currentEatTime - lastEatTime
+                            lastEatTime = currentEatTime
+                            
+                            sellCount += 1
+                        end
+                        sellDebounce = false
+                    end
+                    
+                    -- 空值检查，防止 radius 不存在报错
+                    local farmMoving = false -- 这里根据你的需求设置为 true/false
+                    if farmMoving then
+                        local bound = 300
+                        local startPos = CFrame.new(-bound/2, y, -bound/2)
+                        
+                        local r = radius.Value * 1.1
+                        local dist = (r * numChunks)
+                        local x = dist % bound
+                        local z = math.floor(dist / bound) * r
+                        local offset = CFrame.new(x, 0, z + r * 2)
+                        
+                        if z > bound then
+                            changeMap()
+                            numChunks = 0
+                        end
+                        
+                        root.CFrame = startPos * offset
+                    else
+                        root.CFrame = CFrame.new(0, y, 0)
+                    end
+                end)
+                
+                hum.Died:Connect(function()
+                    if autoConn then
+                        autoConn:Disconnect()
+                    end
+                    changeMap()
+                end)
+                
+                -- 空值检查，防止脚本不存在报错
+                local localChunkManager = char:FindFirstChild("LocalChunkManager")
+                if localChunkManager then
+                    localChunkManager.Enabled = false
+                end
+                local animate = char:FindFirstChild("Animate")
+                if animate then
+                    animate.Enabled = false
+                end
+            end
+            
+            -- 安全处理角色
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            if char then
+                task.spawn(onCharAdd, char)
+            end
+            charAddConn = LocalPlayer.CharacterAdded:Connect(onCharAdd)
+            
+            while autofarm do
+                local dt = task.wait()
+                local loading = workspace:FindFirstChild("Loading")
+                if loading then
+                    loading:Destroy()
+                end
+                if map and chunks then
+                    local showMap = false -- 这里根据你的需求设置为 true/false
+                    if showMap then
+                        map.Parent, chunks.Parent = workspace, workspace
+                    else
+                        map.Parent, chunks.Parent = nil, nil
+                    end
+                end
+            end
+            
+            -- 清理资源
+            if charAddConn then
+                charAddConn:Disconnect()
+            end
+            if autoConn then
+                autoConn:Disconnect()
+            end
+            if map and chunks then
+                map.Parent, chunks.Parent = workspace, workspace
+            end
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+            bedrock:Destroy()
+            -- 安全恢复角色脚本
+            local endChar = LocalPlayer.Character
+            if endChar then
+                local localChunkManager = endChar:FindFirstChild("LocalChunkManager")
+                if localChunkManager then
+                    localChunkManager.Enabled = true
+                end
+                local animate = endChar:FindFirstChild("Animate")
+                if animate then
+                    animate.Enabled = true
+                end
+            end
+            text:Destroy()
+        end)()
+    end
 })
 
 local ZZ = Tabs.Main:AddLeftGroupbox('飞行[仅限自己可见]','plane')
@@ -1047,6 +1333,7 @@ MenuGroup:AddButton("摧毁界面", function()
     Library:Unload()  
 end)
 
+--[[
 local AddonsWarningText = "小心!您放入(LightStar/Addons)目录的任何脚本都会被执行器执行 我们建议您仅使用来自可信来源或开源的插件 对于播件造成的任何损害 我们概不负责 特此警告!"
 
 local AddonsWarning = Tabs.Addons
@@ -1134,6 +1421,7 @@ for _, file in ipairs(listfiles(addonFolder)) do
         
     end
 end
+--]]
 
 function CreateFolder(f)
 if not isfolder(f) then makefolder(f) repeat task.wait() until isfolder(f) end
